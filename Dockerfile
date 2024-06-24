@@ -1,25 +1,26 @@
-# Use the official lightweight Node.js 18 image.
-# https://hub.docker.com/_/node
+# Use the official Node.js image as the base image
 FROM node:19-alpine
 
-# Create and change to the app directory.
+# Set the working directory
 WORKDIR /usr/src/app
 
-# Copy application dependency manifests to the container image.
-# A wildcard is used to ensure both package.json AND package-lock.json are copied.
-# Copying this separately prevents re-running npm install on every code change.
+# Copy package.json and package-lock.json
 COPY package*.json ./
 
-# Install dependencies.
-# If you add a package-lock.json speed your build by switching to 'npm ci'.
-# RUN npm ci --only=production
-RUN npm install --production
+# Install dependencies
+RUN npm install
 
-# Copy local code to the container image.
-COPY . ./
+# Copy the rest of the application code
+COPY . .
 
 # Copy the service account key file
 COPY serviceAccountKey.json /usr/src/app/serviceAccountKey.json
 
-# Run the web service on container startup.
-CMD ["node", "index.js"]
+# Set environment variable for Google application credentials
+# ENV GOOGLE_APPLICATION_CREDENTIALS=/usr/src/app/serviceAccountKey.json
+
+# Expose the port the app runs on
+EXPOSE 8080
+
+# Command to run the application
+CMD ["node", "src/server.js"]

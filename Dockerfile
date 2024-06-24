@@ -18,5 +18,8 @@ RUN npm install --production
 # Copy local code to the container image.
 COPY . ./
 
+# Copy the service account key file
+COPY serviceAccountKey.json /usr/src/app/serviceAccountKey.json
+
 # Run the web service on container startup.
 CMD ["node", "index.js"]

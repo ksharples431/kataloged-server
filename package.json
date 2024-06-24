@@ -3,6 +3,7 @@
   "version": "0.0.1",
   "description": "kataloged backend",
   "main": "index.js",
+  "type": "module",
   "scripts": {
     "dev": "nodemon index.js",
     "start": "node index.js",

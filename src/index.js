@@ -1,8 +1,10 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+// import bodyParser from 'body-parser';
 import bookRoutes from './routes/bookRoutes.js';
-import testRoutes from './routes/testRoutes.js';
+import userRoutes from './routes/userRoutes.js';
+import userBookRoutes from './routes/userBookRoutes.js';
 import { notFound, errorHandler } from './middleware/errorMiddleware.js';
 import { setHeaders } from './middleware/headersMiddleware.js';
 
@@ -23,9 +25,10 @@ app.use(
   })
 );
 
-
+// app.use(bodyParser.json());
 app.use('/api', bookRoutes);
-app.use('/api', testRoutes);
+app.use('/api', userRoutes);
+app.use('/api', userBookRoutes);
 
 app.get('/', (req, res) => {
   res.send('Hello from Cloud Run!');

@@ -7,4 +7,4 @@ const firebaseApp = initializeApp({
 
 const db = getFirestore();
 
-export { db };
+export default db ;

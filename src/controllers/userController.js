@@ -1,50 +1,101 @@
 import db from '../config/firebaseConfig.js';
+import HttpError from '../models/httpErrorModel.js';
+import firebase from 'firebase-admin';
 
-// Add a new user
-export const addUser = async (req, res) => {
-  try {
-    const { userId, name, email } = req.body;
-    await db.collection('users').doc(userId).set({ name, email });
-    res.status(201).send('User added successfully');
-  } catch (error) {
-    res.status(500).send('Error adding user: ' + error.message);
-  }
-};
+const userCollection = db.collection('users');
 
-// Get a user by ID
-export const getUser = async (req, res) => {
+export const addUser = async (req, res, next) => {
   try {
-    const userId = req.params.userId;
-    const userDoc = await db.collection('users').doc(userId).get();
-    if (userDoc.exists) {
-      res.status(200).json(userDoc.data());
-    } else {
-      res.status(404).send('User not found');
-    }
-  } catch (error) {
-    res.status(500).send('Error getting user: ' + error.message);
-  }
-};
-
-// Edit a user by ID
-export const editUser = async (req, res) => {
-  try {
-    const userId = req.params.userId;
     const { name, email } = req.body;
-    await db.collection('users').doc(userId).update({ name, email });
-    res.status(200).send('User updated successfully');
+
+    if (!name || !email) {
+      throw new HttpError('Name and email are required', 400);
+    }
+
+    const userDoc = await userCollection.where('email', '==', email).get();
+    if (!userDoc.empty) {
+      throw new HttpError('User already exists', 409);
+    }
+
+    const newUser = {
+      name,
+      email,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    };
+
+    const userRef = await userCollection.add(newUser);
+
+    res
+      .status(201)
+      .json({ message: 'User added successfully', userId: userRef.id });
   } catch (error) {
-    res.status(500).send('Error updating user: ' + error.message);
+    next(error);
   }
 };
 
-// Delete a user by ID
-export const deleteUser = async (req, res) => {
+export const getUser = async (req, res, next) => {
   try {
-    const userId = req.params.userId;
-    await db.collection('users').doc(userId).delete();
-    res.status(200).send('User deleted successfully');
+    const { userId } = req.params;
+    if (!userId) {
+      throw new HttpError('User ID is required', 400);
+    }
+
+    const userDoc = await userCollection.doc(userId).get();
+    if (!userDoc.exists) {
+      throw new HttpError('User not found', 404);
+    }
+
+    res.status(200).json(userDoc.data());
   } catch (error) {
-    res.status(500).send('Error deleting user: ' + error.message);
+    next(error);
+  }
+};
+
+export const editUser = async (req, res, next) => {
+  try {
+    const { userId } = req.params;
+    if (!userId) {
+      throw new HttpError('User ID is required', 400);
+    }
+
+    const { name, email } = req.body;
+    if (!name && !email) {
+      throw new HttpError(
+        'At least one field (name or email) is required for update',
+        400
+      );
+    }
+
+    const updateData = {
+      ...(name && { name }),
+      ...(email && { email }),
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    };
+
+    await userCollection.doc(userId).update(updateData);
+
+    res.status(200).json({ message: 'User updated successfully' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const deleteUser = async (req, res, next) => {
+  try {
+    const { userId } = req.params;
+    if (!userId) {
+      throw new HttpError('User ID is required', 400);
+    }
+
+    const userDoc = await userCollection.doc(userId).get();
+    if (!userDoc.exists) {
+      throw new HttpError('User not found', 404);
+    }
+
+    await userCollection.doc(userId).delete();
+    res.status(200).json({ message: 'User deleted successfully' });
+  } catch (error) {
+    next(error);
   }
 };

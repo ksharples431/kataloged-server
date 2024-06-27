@@ -1,7 +1,10 @@
 import db from '../config/firebaseConfig.js';
+import HttpError from '../models/httpErrorModel.js';
+import firebase from 'firebase-admin';
 
-// Add a new book
-export const addBook = async (req, res) => {
+const bookCollection = db.collection('books');
+
+export const addBook = async (req, res, next) => {
   try {
     const {
       title,
@@ -19,8 +22,11 @@ export const addBook = async (req, res) => {
       wishlist,
     } = req.body;
 
-    // Add the book document without specifying bookId
-    const docRef = await db.collection('books').add({
+    if (!title || !author) {
+      throw new HttpError('Title and author are required', 400);
+    }
+
+    const newBook = {
       title,
       author,
       imagePath,
@@ -34,68 +40,93 @@ export const addBook = async (req, res) => {
       favorite,
       whereToGet,
       wishlist,
-    });
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    };
 
-    res.status(201).send(`Book added successfully with ID: ${docRef.id}`);
+    // Remove undefined fields???
+
+    const docRef = await bookCollection.add(newBook);
+
+    res
+      .status(201)
+      .json({ message: 'Book added successfully', bookId: docRef.id });
   } catch (error) {
-    res.status(500).send('Error adding book: ' + error.message);
+    next(error);
   }
 };
 
-// Get a book by ID
-export const getBook = async (req, res) => {
+export const getBook = async (req, res, next) => {
   try {
-    const bookId = req.params.bookId;
-    const bookDoc = await db.collection('books').doc(bookId).get();
-    if (bookDoc.exists) {
-      res.status(200).json(bookDoc.data());
-    } else {
-      res.status(404).send('Book not found');
+    const { bookId } = req.params;
+    if (!bookId) {
+      throw new HttpError('Book ID is required', 400);
     }
+
+    const bookDoc = await bookCollection.doc(bookId).get();
+    if (!bookDoc.exists) {
+      throw new HttpError('Book not found', 404);
+    }
+
+    res.status(200).json(bookDoc.data());
   } catch (error) {
-    res.status(500).send('Error getting book: ' + error.message);
+    next(error);
   }
 };
 
-// Get all books
-export const getAllBooks = async (req, res) => {
+export const getAllBooks = async (req, res, next) => {
   try {
-    const booksSnapshot = await db.collection('books').get();
-    const books = [];
-    booksSnapshot.forEach((doc) => {
-      books.push({
-        id: doc.id,
-        ...doc.data(),
-      });
-    });
+    const booksSnapshot = await bookCollection.get();
+    const books = booksSnapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+
     res.status(200).json(books);
   } catch (error) {
-    res.status(500).send('Error getting books: ' + error.message);
+    next(error);
   }
 };
 
-// Edit a book by ID
-export const editBook = async (req, res) => {
+export const editBook = async (req, res, next) => {
   try {
-    const bookId = req.params.bookId;
-    const { title, author, publishedYear } = req.body;
-    await db
-      .collection('books')
-      .doc(bookId)
-      .update({ title, author, publishedYear });
-    res.status(200).send('Book updated successfully');
+    const { bookId } = req.params;
+    if (!bookId) {
+      throw new HttpError('Book ID is required', 400);
+    }
+
+    const updateData = { ...req.body };
+    delete updateData.createdAt;
+
+    if (Object.keys(updateData).length === 0) {
+      throw new HttpError('No valid fields provided for update', 400);
+    }
+
+    updateData.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
+
+    await bookCollection.doc(bookId).update(updateData);
+
+    res.status(200).json({ message: 'Book updated successfully' });
   } catch (error) {
-    res.status(500).send('Error updating book: ' + error.message);
+    next(error);
   }
 };
 
-// Delete a book by ID
-export const deleteBook = async (req, res) => {
+export const deleteBook = async (req, res, next) => {
   try {
-    const bookId = req.params.bookId;
-    await db.collection('books').doc(bookId).delete();
-    res.status(200).send('Book deleted successfully');
+    const { bookId } = req.params;
+    if (!bookId) {
+      throw new HttpError('Book ID is required', 400);
+    }
+
+    const bookDoc = await bookCollection.doc(bookId).get();
+    if (!bookDoc.exists) {
+      throw new HttpError('Book not found', 404);
+    }
+
+    await bookCollection.doc(bookId).delete();
+    res.status(200).json({ message: 'Book deleted successfully' });
   } catch (error) {
-    res.status(500).send('Error deleting book: ' + error.message);
+    next(error);
   }
 };

@@ -1,7 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-// import bodyParser from 'body-parser';
+import addRequestId from 'express-request-id'; 
 import bookRoutes from './routes/bookRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import userBookRoutes from './routes/userBookRoutes.js';
@@ -12,20 +12,21 @@ dotenv.config();
 
 const app = express();
 
+app.use(addRequestId());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(setHeaders);
+
 app.use(
   cors({
     origin: [
       'https://kataloged431-client.web.app',
       'http://localhost:5173',
     ],
-    credentials: true, // This is necessary for including credentials in the request
+    credentials: true,
   })
 );
 
-// app.use(bodyParser.json());
 app.use('/api', bookRoutes);
 app.use('/api', userRoutes);
 app.use('/api', userBookRoutes);

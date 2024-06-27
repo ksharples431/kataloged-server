@@ -67,7 +67,7 @@ export const getUserBooks = async (req, res, next) => {
         id: bookDoc.id,
         ...bookDoc.data(),
       }))
-      .filter((book) => book.id); // Filter out any potentially undefined books
+      .filter((book) => book.id); 
 
     res.status(200).json(books);
   } catch (error) {
@@ -104,7 +104,7 @@ export const getBookUsers = async (req, res, next) => {
         id: userDoc.id,
         ...userDoc.data(),
       }))
-      .filter((user) => user.id); // Filter out any potentially undefined users
+      .filter((user) => user.id); 
 
     res.status(200).json(users);
   } catch (error) {

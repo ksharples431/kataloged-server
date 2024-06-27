@@ -6,29 +6,30 @@ const userCollection = db.collection('users');
 
 export const addUser = async (req, res, next) => {
   try {
-    const { name, email } = req.body;
+    const { uid, username, email } = req.body;
 
-    if (!name || !email) {
-      throw new HttpError('Name and email are required', 400);
+    if (!uid ||!username || !email) {
+      throw new HttpError('UID, name and email are required', 400);
     }
 
-    const userDoc = await userCollection.where('email', '==', email).get();
-    if (!userDoc.empty) {
+    const userDoc = await userCollection.doc(uid).get();
+
+    if (userDoc.exists) {
       throw new HttpError('User already exists', 409);
     }
 
     const newUser = {
-      name,
+      username,
       email,
       createdAt: firebase.firestore.FieldValue.serverTimestamp(),
       updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
     };
 
-    const userRef = await userCollection.add(newUser);
+    await userCollection.doc(uid).set(newUser);
 
     res
       .status(201)
-      .json({ message: 'User added successfully', userId: userRef.id });
+      .json({ message: 'User added successfully', userId: uid });
   } catch (error) {
     next(error);
   }

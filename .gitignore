@@ -108,3 +108,4 @@ dist
 
 # Firebase SDK key file
 serviceAccountKey.json
+client_secret.json

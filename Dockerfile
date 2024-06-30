@@ -16,6 +16,8 @@ COPY . .
 # Copy the service account key file
 COPY serviceAccountKey.json /usr/src/app/serviceAccountKey.json
 
+COPY client_secret.json /usr/src/app/client_secret.json
+
 # Set environment variable for Google application credentials
 # ENV GOOGLE_APPLICATION_CREDENTIALS=/usr/src/app/serviceAccountKey.json
 

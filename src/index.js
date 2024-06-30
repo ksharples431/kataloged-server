@@ -20,22 +20,30 @@ app.use(setHeaders);
 const allowedOrigins = [
   'https://kataloged431-client.web.app',
   'http://localhost:5173',
+  'http://kataloged.com/',
+  'http://www.kataloged.com/',
 ];
-app.use(
-  cors({
-    origin: function (origin, callback) {
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error('Not allowed by CORS'));
-      }
-    },
-  })
-);
 
+const corsOptions = {
+  origin: function (origin, callback) {
+    if (!origin) return callback(null, true); // Allow requests with no origin, like mobile apps or curl requests
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], // Add other methods as needed
+  allowedHeaders: ['Content-Type', 'Authorization'], // Add other headers as needed
+  credentials: true, // Allow credentials
+};
+
+// Enable preflight requests for all routes
 app.options('*', cors(corsOptions));
 
+// Use CORS middleware for all routes
 app.use(cors(corsOptions));
+
 
 
 app.use('/api', bookRoutes);

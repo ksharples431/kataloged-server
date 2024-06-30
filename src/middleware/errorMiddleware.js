@@ -30,7 +30,7 @@ export const errorHandler = (err, req, res, next) => {
 
   res.status(error.code).json({
     success: false,
-    message: error.message,
+    message: error.message || 'An unknown error occurred',
     stack: process.env.NODE_ENV === 'production' ? undefined : error.stack,
     requestId: req.id, 
   });

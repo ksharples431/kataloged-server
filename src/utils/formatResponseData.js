@@ -6,8 +6,13 @@ export const convertFirestoreTimestamp = (timestamp) => {
   return date.toISOString();
 };
 
-export const formatBookData = (doc) => ({
+export const formatResponseData = (doc) => ({
   id: doc.id,
   ...doc.data(),
   updatedAt: convertFirestoreTimestamp(doc.data().updatedAt),
+});
+
+export const formatSuccessResponse = (message, data) => ({
+  message,
+  data,
 });

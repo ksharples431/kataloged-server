@@ -1,7 +1,11 @@
 import db from '../config/firebaseConfig.js';
 import HttpError from '../models/httpErrorModel.js';
 import firebase from 'firebase-admin';
-import { formatBookData } from '../utils/controllerUtils.js';
+import { getDocumentById } from '../utils/getDocById.js';
+import {
+  formatResponseData,
+  formatSuccessResponse,
+} from '../utils/formatResponseData.js';
 
 const bookCollection = db.collection('books');
 
@@ -28,78 +32,78 @@ export const addBook = async (req, res, next) => {
       throw new HttpError('Failed to add book', 500);
     }
 
-    const formattedNewBook = formatBookData(doc);
+    const book = formatResponseData(doc);
 
-    res.status(201).json({
-      message: 'Book added successfully',
-      book: formattedNewBook,
-    });
+    res
+      .status(201)
+      .json(formatSuccessResponse('Book added successfully', { book }));
   } catch (error) {
     next(error);
   }
 };
 
-export const getBook = async (req, res, next) => {
+export const getBooks = async (req, res, next) => {
   try {
-    const { bookId } = req.params;
-    if (!bookId) {
-      throw new HttpError('Book ID is required', 400);
-    }
+    const snapshot = await bookCollection.get();
 
-    const bookDoc = await bookCollection.doc(bookId).get();
-    if (!bookDoc.exists) {
-      throw new HttpError('Book not found', 404);
-    }
+    const books = snapshot.docs.map((doc) => formatResponseData(doc));
 
-    const formattedBook = formatBookData(bookDoc);
-
-    res.status(200).json(formattedBook);
+    res
+      .status(200)
+      .json(
+        formatSuccessResponse('Books successfully fetched', { books })
+      );
   } catch (error) {
     next(error);
   }
 };
 
-export const getAllBooks = async (req, res, next) => {
+export const getBookById = async (req, res, next) => {
   try {
-    const booksSnapshot = await bookCollection.get();
-    const formattedBooks = booksSnapshot.docs.map(formatBookData);
+    const { bid } = req.params;
+    const doc = await getDocumentById(bookCollection, bid, 'Book');
 
-    res.status(200).json(formattedBooks);
+    const book = formatResponseData(doc);
+    res
+      .status(200)
+      .json(formatSuccessResponse('Book successfully fetched', { book }));
   } catch (error) {
     next(error);
   }
 };
 
-export const editBook = async (req, res, next) => {
+export const updateBook = async (req, res, next) => {
   try {
-    const { bookId } = req.params;
-    console.log(bookId);
-    if (!bookId) {
-      throw new HttpError('Book ID is required', 400);
-    }
+    const { bid } = req.params;
 
+    const doc = await getDocumentById(bookCollection, bid, 'Book');
+
+    const currentData = doc.data();
     const updateData = { ...req.body };
-    delete updateData.createdAt; 
 
-    if (Object.keys(updateData).length === 0) {
-      throw new HttpError('No valid fields provided for update', 400);
+    delete updateData.id;
+    delete updateData.createdAt;
+
+    const hasChanges = Object.entries(updateData).some(
+      ([key, value]) => currentData[key] !== value
+    );
+
+    if (!hasChanges) {
+      const book = formatResponseData(doc);
+      return res
+        .status(200)
+        .json(formatSuccessResponse('No changes detected', { book }));
     }
 
     updateData.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
+    await doc.ref.update(updateData);
 
-    await bookCollection.doc(bookId).update(updateData);
+    const updatedDoc = await doc.ref.get();
 
-    const updatedBookDoc = await bookCollection.doc(bookId).get();
-    if (!updatedBookDoc.exists) {
-      throw new HttpError('Book not found after update', 404);
-    }
-
-    const formattedUpdatedBook = formatBookData(updatedBookDoc);
-
-    res.status(200).json({
-      message: 'Book updated successfully',
-      book: formattedUpdatedBook,
-    });
+    const book = formatResponseData(updatedDoc);
+    res
+      .status(200)
+      .json(formatSuccessResponse('Book updated successfully', { book }));
   } catch (error) {
     next(error);
   }
@@ -107,18 +111,13 @@ export const editBook = async (req, res, next) => {
 
 export const deleteBook = async (req, res, next) => {
   try {
-    const { bookId } = req.params;
-    if (!bookId) {
-      throw new HttpError('Book ID is required', 400);
-    }
+    const { bid } = req.params;
+    const doc = await getDocumentById(bookCollection, bid, 'Book');
 
-    const bookDoc = await bookCollection.doc(bookId).get();
-    if (!bookDoc.exists) {
-      throw new HttpError('Book not found', 404);
-    }
-
-    await bookCollection.doc(bookId).delete();
-    res.status(200).json({ message: 'Book deleted successfully' });
+    await doc.ref.delete();
+    res
+      .status(200)
+      .json(formatSuccessResponse('Book deleted successfully', null));
   } catch (error) {
     next(error);
   }

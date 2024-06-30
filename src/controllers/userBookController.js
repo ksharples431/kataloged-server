@@ -1,38 +1,73 @@
 import db from '../config/firebaseConfig.js';
 import HttpError from '../models/httpErrorModel.js';
 import firebase from 'firebase-admin';
+import { getDocumentById } from '../utils/getDocById.js';
+import {
+  formatResponseData,
+  formatSuccessResponse,
+} from '../utils/formatResponseData.js';
+import {
+  fetchCombinedBookData,
+  fetchCombinedBooksData,
+} from '../utils/combineBookData.js';
 
 const userBookCollection = db.collection('userBooks');
-const bookCollection = db.collection('books');
-const userCollection = db.collection('users');
 
-export const relateBookToUser = async (req, res, next) => {
+export const addUserBook = async (req, res, next) => {
   try {
-    const { userId, bookId } = req.body;
-
-    if (!userId || !bookId) {
+    const { uid, bid, ...otherFields } = req.body;
+    if (!uid || !bid) {
       throw new HttpError('User ID and Book ID are required', 400);
     }
-
-    // Check if the relation already exists
-    const existingRelation = await userBookCollection
-      .where('userId', '==', userId)
-      .where('bookId', '==', bookId)
-      .get();
-
-    if (!existingRelation.empty) {
-      throw new HttpError('This book is already related to the user', 409);
-    }
-
-    const newRelation = {
-      userId,
-      bookId,
+    const newUserBook = {
+      uid,
+      bid,
+      ...otherFields,
       createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
     };
 
-    await userBookCollection.add(newRelation);
+    const docRef = await userBookCollection.add(newUserBook);
+    const doc = await docRef.get();
 
-    res.status(201).json({ message: 'Book related to user successfully' });
+    if (!doc.exists) {
+      throw new HttpError('Failed to add book to user library', 500);
+    }
+    const userBook = formatResponseData(doc);
+    res
+      .status(201)
+      .json(
+        formatSuccessResponse('Book added to user library successfully', {
+          userBook,
+        })
+      );
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getUserBookById = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const userBookDoc = await getDocumentById(
+      userBookCollection,
+      id,
+      'User Book'
+    );
+
+    const combinedData = await fetchCombinedBookData(userBookDoc);
+
+    if (!combinedData) {
+      throw new HttpError(`Associated Book not found`, 404);
+    }
+
+    res
+      .status(200)
+      .json(
+        formatSuccessResponse('User Book retrieved successfully', {
+          userBook: combinedData,
+        })
+      );
   } catch (error) {
     next(error);
   }
@@ -40,73 +75,91 @@ export const relateBookToUser = async (req, res, next) => {
 
 export const getUserBooks = async (req, res, next) => {
   try {
-    const { userId } = req.params;
-
-    if (!userId) {
-      throw new HttpError('User ID is required', 400);
-    }
-
-    const userBooksQuerySnapshot = await userBookCollection
-      .where('userId', '==', userId)
+    const { uid } = req.params;
+    const snapshot = await userBookCollection
+      .where('uid', '==', uid)
       .get();
 
-    if (userBooksQuerySnapshot.empty) {
-      throw new HttpError('No books found for this user', 404);
+    if (snapshot.empty) {
+      return res
+        .status(200)
+        .json(
+          formatSuccessResponse('No books found for this user', {
+            userBooks: [],
+          })
+        );
     }
 
-    const bookIds = userBooksQuerySnapshot.docs.map(
-      (doc) => doc.data().bookId
+    const userBooksWithFullInfo = await fetchCombinedBooksData(
+      snapshot.docs
     );
-    const booksPromises = bookIds.map((bookId) =>
-      bookCollection.doc(bookId).get()
-    );
-    const booksDocs = await Promise.all(booksPromises);
 
-    const books = booksDocs
-      .map((bookDoc) => ({
-        id: bookDoc.id,
-        ...bookDoc.data(),
-      }))
-      .filter((book) => book.id); 
-
-    res.status(200).json(books);
+    res
+      .status(200)
+      .json(
+        formatSuccessResponse('User Books retrieved successfully', {
+          userBooks: userBooksWithFullInfo,
+        })
+      );
   } catch (error) {
     next(error);
   }
 };
 
-export const getBookUsers = async (req, res, next) => {
+export const updateUserBook = async (req, res, next) => {
   try {
-    const { bookId } = req.params;
+    const { id } = req.params;
+    const doc = await getDocumentById(userBookCollection, id, 'User Book');
 
-    if (!bookId) {
-      throw new HttpError('Book ID is required', 400);
+    const currentData = doc.data();
+    const updateData = { ...req.body };
+
+    delete updateData.id;
+    delete updateData.createdAt;
+
+    const hasChanges = Object.entries(updateData).some(
+      ([key, value]) => currentData[key] !== value
+    );
+
+    if (!hasChanges) {
+      const userBook = formatResponseData(doc);
+      return res
+        .status(200)
+        .json(formatSuccessResponse('No changes detected', { userBook }));
     }
 
-    const bookUsersQuerySnapshot = await userBookCollection
-      .where('bookId', '==', bookId)
-      .get();
+    updateData.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
+    await doc.ref.update(updateData);
 
-    if (bookUsersQuerySnapshot.empty) {
-      throw new HttpError('No users found for this book', 404);
-    }
+    const updatedDoc = await doc.ref.get();
+    const userBook = formatResponseData(updatedDoc);
 
-    const userIds = bookUsersQuerySnapshot.docs.map(
-      (doc) => doc.data().userId
-    );
-    const usersPromises = userIds.map((userId) =>
-      userCollection.doc(userId).get()
-    );
-    const usersDocs = await Promise.all(usersPromises);
+    res
+      .status(200)
+      .json(
+        formatSuccessResponse('User book updated successfully', {
+          userBook,
+        })
+      );
+  } catch (error) {
+    next(error);
+  }
+};
 
-    const users = usersDocs
-      .map((userDoc) => ({
-        id: userDoc.id,
-        ...userDoc.data(),
-      }))
-      .filter((user) => user.id); 
+export const deleteUserBook = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const doc = await getDocumentById(userBookCollection, id, 'User Book');
 
-    res.status(200).json(users);
+    await doc.ref.delete();
+    res
+      .status(200)
+      .json(
+        formatSuccessResponse(
+          'Book removed from user library successfully',
+          null
+        )
+      );
   } catch (error) {
     next(error);
   }

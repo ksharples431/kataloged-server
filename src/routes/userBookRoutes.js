@@ -1,14 +1,18 @@
 import express from 'express';
 import {
-  relateBookToUser,
+  addUserBook,
+  getUserBookById,
   getUserBooks,
-  getBookUsers,
+  updateUserBook,
+  deleteUserBook,
 } from '../controllers/userBookController.js';
 
 const router = express.Router();
 
-router.post('/userBooks', relateBookToUser);
-router.get('/users/:userId/books', getUserBooks);
-router.get('/books/:bookId/users', getBookUsers);
+router.post('/user-books', addUserBook);
+router.get('/user-books/:id', getUserBookById);
+router.get('/users/:uid/books', getUserBooks);
+router.patch('/user-books/:id', updateUserBook);
+router.delete('/user-books/:id', deleteUserBook);
 
 export default router;

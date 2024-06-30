@@ -22,6 +22,8 @@ const allowedOrigins = [
   'https://localhost:5173',
   'https://kataloged.com/',
   'https://www.kataloged.com/',
+  'https://kataloged-server-npcxvkrrnq-uc.a.run.app',
+  'http://kataloged-server-npcxvkrrnq-uc.a.run.app',
   'http://kataloged431-client.web.app',
   'http://localhost:5173',
   'http://kataloged.com/',

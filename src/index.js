@@ -17,15 +17,26 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(setHeaders);
 
+const allowedOrigins = [
+  'https://kataloged431-client.web.app',
+  'http://localhost:5173',
+];
 app.use(
   cors({
-    origin: [
-      'https://kataloged431-client.web.app',
-      'http://localhost:5173',
-    ],
-    credentials: true,
+    origin: function (origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
   })
 );
+
+app.options('*', cors(corsOptions));
+
+app.use(cors(corsOptions));
+
 
 app.use('/api', bookRoutes);
 app.use('/api', userRoutes);

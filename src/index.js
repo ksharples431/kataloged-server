@@ -17,53 +17,25 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(setHeaders);
 
-const allowedOrigins = [
-  'https://kataloged431-client.web.app',
-  'https://localhost:5173',
-  'https://kataloged.com/',
-  'https://www.kataloged.com/',
-  'https://kataloged-server-npcxvkrrnq-uc.a.run.app',
-  'http://kataloged-server-npcxvkrrnq-uc.a.run.app',
-  'http://kataloged431-client.web.app',
-  'http://localhost:5173',
-  'http://kataloged.com/',
-  'http://www.kataloged.com/',
-];
+const allowedOrigins = ['https://kataloged.com', 'http://localhost:5173'];
 
-const corsOptions = {
-  origin: function (origin, callback) {
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.indexOf(origin) !== -1) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true,
-  preflightContinue: false,
-  optionsSuccessStatus: 204,
-};
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true,
+  })
+);
 
-// Enable preflight requests for all routes
-app.options('*', cors(corsOptions));
-
-// Use CORS middleware for all routes
-app.use(cors(corsOptions));
-
-// Add a custom middleware to set explicit headers
-app.use((req, res, next) => {
-  res.header(
-    'Access-Control-Allow-Methods',
-    corsOptions.methods.join(', ')
-  );
-  res.header(
-    'Access-Control-Allow-Headers',
-    corsOptions.allowedHeaders.join(', ')
-  );
-  next();
-});
+// Enable pre-flight requests for all routes
+app.options('*', cors());
 
 app.use('/api', bookRoutes);
 app.use('/api', userRoutes);

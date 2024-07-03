@@ -8,6 +8,62 @@ import {
 
 const userCollection = db.collection('users');
 
+export const googleSignIn = async (req, res, next) => {
+  try {
+    const { email } = req.body;
+    const idToken = req.headers.authorization.split('Bearer ')[1];
+
+    if (!email || !idToken) {
+      throw new HttpError('Email and token are required', 400);
+    }
+
+    // Verify the ID token
+    const decodedToken = await admin.auth().verifyIdToken(idToken);
+    const uid = decodedToken.uid;
+
+    let user = await userCollection.doc(uid).get();
+    let isNewUser = false;
+
+    if (!user.exists) {
+      // New user, create an account
+      isNewUser = true;
+      const newUser = {
+        username: decodedToken.name || email.split('@')[0], // Use name from Google or generate from email
+        email,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      };
+
+      await userCollection.doc(uid).set(newUser);
+      user = await userCollection.doc(uid).get();
+
+      if (!user.exists) {
+        throw new HttpError('Failed to create user', 500);
+      }
+    } else {
+      // Existing user, update last login time
+      await userCollection.doc(uid).update({
+        lastLoginAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+    }
+
+    const formattedUser = formatResponseData(user);
+
+    res
+      .status(200)
+      .json(
+        formatSuccessResponse(
+          isNewUser
+            ? 'User created successfully'
+            : 'User signed in successfully',
+          { user: formattedUser }
+        )
+      );
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const createUser = async (req, res, next) => {
   try {
     const { username, email } = req.body;

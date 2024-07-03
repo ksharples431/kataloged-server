@@ -1,6 +1,5 @@
-import db from '../config/firebaseConfig.js';
+import db, { admin } from '../config/firebaseConfig.js';
 import HttpError from '../models/httpErrorModel.js';
-import firebase from 'firebase-admin';
 import { getDocumentById } from '../utils/getDocById.js';
 import {
   formatResponseData,
@@ -12,34 +11,37 @@ const userCollection = db.collection('users');
 export const createUser = async (req, res, next) => {
   try {
     const { username, email } = req.body;
+    const idToken = req.headers.authorization.split('Bearer ')[1];
 
-    if (!username || !email) {
-      throw new HttpError('Username and email are required', 400);
+    if (!username || !email || !idToken) {
+      throw new HttpError('Username, email, and token are required', 400);
     }
 
-    const existingUser = await userCollection
-      .where('email', '==', email)
-      .get();
-    if (!existingUser.empty) {
-      throw new HttpError('User with this email already exists', 409);
+    // Verify the ID token
+    const decodedToken = await admin.auth().verifyIdToken(idToken);
+    const uid = decodedToken.uid;
+
+    const existingUser = await userCollection.doc(uid).get();
+    if (existingUser.exists) {
+      throw new HttpError('User with this UID already exists', 409);
     }
 
     const newUser = {
       username,
       email,
-      token: '',
-      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     };
 
-    const docRef = await userCollection.add(newUser);
-    const doc = await docRef.get();
+    await userCollection.doc(uid).set(newUser);
 
-    if (!doc.exists) {
+    const createdUser = await userCollection.doc(uid).get();
+
+    if (!createdUser.exists) {
       throw new HttpError('Failed to create user', 500);
     }
 
-    const user = formatResponseData(doc);
+    const user = formatResponseData(createdUser);
 
     res
       .status(201)

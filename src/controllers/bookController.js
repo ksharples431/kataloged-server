@@ -6,10 +6,18 @@ import {
   formatResponseData,
   formatSuccessResponse,
 } from '../utils/formatResponseData.js';
+import { sortBooks } from '../utils/bookSorting.js';
+import {
+  mapAuthorsFromBooks,
+  mapGenresFromBooks,
+  mapAuthorBooks,
+  mapGenreBooks,
+} from '../utils/bookMapping.js';
 
 const bookCollection = db.collection('books');
 
-export const addBook = async (req, res, next) => {
+// Create Book
+export const createBook = async (req, res, next) => {
   try {
     const { title, author, ...otherFields } = req.body;
 
@@ -42,22 +50,7 @@ export const addBook = async (req, res, next) => {
   }
 };
 
-export const getBooks = async (req, res, next) => {
-  try {
-    const snapshot = await bookCollection.get();
-
-    const books = snapshot.docs.map((doc) => formatResponseData(doc));
-
-    res
-      .status(200)
-      .json(
-        formatSuccessResponse('Books successfully fetched', { books })
-      );
-  } catch (error) {
-    next(error);
-  }
-};
-
+// Get Book by ID
 export const getBookById = async (req, res, next) => {
   try {
     const { bid } = req.params;
@@ -72,6 +65,7 @@ export const getBookById = async (req, res, next) => {
   }
 };
 
+// Update Book
 export const updateBook = async (req, res, next) => {
   try {
     const { bid } = req.params;
@@ -109,6 +103,7 @@ export const updateBook = async (req, res, next) => {
   }
 };
 
+// Delete Book
 export const deleteBook = async (req, res, next) => {
   try {
     const { bid } = req.params;
@@ -118,6 +113,127 @@ export const deleteBook = async (req, res, next) => {
     res
       .status(200)
       .json(formatSuccessResponse('Book deleted successfully', null));
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Get Books with sorting
+export const getBooks = async (req, res, next) => {
+  try {
+    const { sortBy = 'title', order = 'asc' } = req.query;
+    const validSortBy = ['title', 'author', 'updatedAt'];
+    const validOrder = ['asc', 'desc'];
+
+    if (!validSortBy.includes(sortBy) || !validOrder.includes(order)) {
+      throw new HttpError('Invalid sort options', 400);
+    }
+
+    const querySnapshot = await bookCollection.get();
+    let books = querySnapshot.docs.map(formatResponseData);
+    books = sortBooks(books, sortBy, order);
+
+    res
+      .status(200)
+      .json(
+        formatSuccessResponse('Books fetched successfully', { books })
+      );
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Get Authors with book count and sorting
+export const getAuthors = async (req, res, next) => {
+  try {
+    const { order = 'asc' } = req.query;
+    const validOrder = ['asc', 'desc'];
+
+    if (!validOrder.includes(order)) {
+      throw new HttpError('Invalid sort order', 400);
+    }
+
+    let authors = await mapAuthorsFromBooks();
+    authors = sortBooks(authors, 'author', order);
+
+    res
+      .status(200)
+      .json(
+        formatSuccessResponse('Authors fetched successfully', { authors })
+      );
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Get Genres with book count and sorting
+export const getGenres = async (req, res, next) => {
+  try {
+    const { order = 'asc' } = req.query;
+    const validOrder = ['asc', 'desc'];
+
+    if (!validOrder.includes(order)) {
+      throw new HttpError('Invalid sort order', 400);
+    }
+
+    let genres = await mapGenresFromBooks();
+    genres = sortBooks(genres, 'genre', order);
+
+    res
+      .status(200)
+      .json(
+        formatSuccessResponse('Authors fetched successfully', { genres })
+      );
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Get Books by Author with sorting
+export const getBooksByAuthor = async (req, res, next) => {
+  try {
+    const { author } = req.params;
+    const { sortBy = 'title', order = 'asc' } = req.query;
+    const validSortBy = ['title', 'author', 'updatedAt'];
+    const validOrder = ['asc', 'desc'];
+
+    if (!validSortBy.includes(sortBy) || !validOrder.includes(order)) {
+      throw new HttpError('Invalid sort options', 400);
+    }
+
+    let books = await mapAuthorBooks(author);
+    books = sortBooks(books, sortBy, order);
+
+    res.status(200).json(
+      formatSuccessResponse('Books by author fetched successfully', {
+        books,
+      })
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Get Books by Genre with sorting
+export const getBooksByGenre = async (req, res, next) => {
+  try {
+    const { genre } = req.params;
+    const { sortBy = 'title', order = 'asc' } = req.query;
+    const validSortBy = ['title', 'author', 'updatedAt'];
+    const validOrder = ['asc', 'desc'];
+
+    if (!validSortBy.includes(sortBy) || !validOrder.includes(order)) {
+      throw new HttpError('Invalid sort options', 400);
+    }
+
+    let books = await mapGenreBooks(genre);
+    books = sortBooks(books, sortBy, order);
+
+    res.status(200).json(
+      formatSuccessResponse('Books by genre fetched successfully', {
+        books,
+      })
+    );
   } catch (error) {
     next(error);
   }

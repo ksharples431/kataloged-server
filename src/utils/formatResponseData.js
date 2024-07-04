@@ -16,3 +16,13 @@ export const formatSuccessResponse = (message, data) => ({
   message,
   data,
 });
+
+export const removeCommonArticles = (title) => {
+  const articlesRegex = /^(a |an |the )/i;
+  return title.replace(articlesRegex, '').trim();
+};
+
+export const getLastName = (name) => {
+  const nameArray = name.split(' ');
+  return nameArray[nameArray.length - 1];
+};

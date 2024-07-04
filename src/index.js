@@ -37,9 +37,9 @@ app.use(
 // Enable pre-flight requests for all routes
 app.options('*', cors());
 
-app.use('/api', bookRoutes);
-app.use('/api', userRoutes);
-app.use('/api', userBookRoutes);
+app.use('/api/books', bookRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/userBooks', userBookRoutes);
 
 app.get('/', (req, res) => {
   res.send('Hello from Cloud Run!');

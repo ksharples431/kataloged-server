@@ -1,4 +1,4 @@
-import db from '../config/firebaseConfig.js';
+import db from '../../config/firebaseConfig.js';
 import { formatResponseData } from '../utils/formatResponseData.js';
 
 const bookCollection = db.collection('books');

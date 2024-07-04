@@ -1,18 +1,21 @@
 import db from '../config/firebaseConfig.js';
-import HttpError from '../models/httpErrorModel.js';
+import {
+  ValidationError,
+  DatabaseError,
+} from '../models/httpErrorModel.js';
 import firebase from 'firebase-admin';
 import { getDocumentById } from '../utils/getDocById.js';
 import {
   formatResponseData,
   formatSuccessResponse,
 } from '../utils/formatResponseData.js';
-import { sortBooks } from '../utils/bookSorting.js';
+import { sortBooks } from './utils/bookSorting.js';
 import {
   mapAuthorsFromBooks,
   mapGenresFromBooks,
   mapAuthorBooks,
   mapGenreBooks,
-} from '../utils/bookMapping.js';
+} from './utils/bookMapping.js';
 
 const bookCollection = db.collection('books');
 
@@ -22,7 +25,7 @@ export const createBook = async (req, res, next) => {
     const { title, author, ...otherFields } = req.body;
 
     if (!title || !author) {
-      throw new HttpError('Title and author are required', 400);
+      throw new ValidationError('Title and author required');
     }
 
     const newBook = {
@@ -37,7 +40,7 @@ export const createBook = async (req, res, next) => {
     const doc = await docRef.get();
 
     if (!doc.exists) {
-      throw new HttpError('Failed to add book', 500);
+      throw new DatabaseError('create book');
     }
 
     const book = formatResponseData(doc);
@@ -126,7 +129,7 @@ export const getBooks = async (req, res, next) => {
     const validOrder = ['asc', 'desc'];
 
     if (!validSortBy.includes(sortBy) || !validOrder.includes(order)) {
-      throw new HttpError('Invalid sort options', 400);
+      throw new ValidationError('Invalid sort options');
     }
 
     const querySnapshot = await bookCollection.get();
@@ -150,7 +153,7 @@ export const getAuthors = async (req, res, next) => {
     const validOrder = ['asc', 'desc'];
 
     if (!validOrder.includes(order)) {
-      throw new HttpError('Invalid sort order', 400);
+      throw new ValidationError('Invalid sort order');
     }
 
     let authors = await mapAuthorsFromBooks();
@@ -173,7 +176,7 @@ export const getGenres = async (req, res, next) => {
     const validOrder = ['asc', 'desc'];
 
     if (!validOrder.includes(order)) {
-      throw new HttpError('Invalid sort order', 400);
+      throw new ValidationError('Invalid sort order');
     }
 
     let genres = await mapGenresFromBooks();
@@ -198,7 +201,7 @@ export const getBooksByAuthor = async (req, res, next) => {
     const validOrder = ['asc', 'desc'];
 
     if (!validSortBy.includes(sortBy) || !validOrder.includes(order)) {
-      throw new HttpError('Invalid sort options', 400);
+      throw new ValidationError('Invalid sort order');
     }
 
     let books = await mapAuthorBooks(author);
@@ -223,7 +226,7 @@ export const getBooksByGenre = async (req, res, next) => {
     const validOrder = ['asc', 'desc'];
 
     if (!validSortBy.includes(sortBy) || !validOrder.includes(order)) {
-      throw new HttpError('Invalid sort options', 400);
+      throw new ValidationError('Invalid sort order');
     }
 
     let books = await mapGenreBooks(genre);

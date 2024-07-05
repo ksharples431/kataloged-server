@@ -10,6 +10,7 @@ import {
   formatSuccessResponse,
   getDocumentById,
   validateSortOptions,
+  validateInput,
 } from './utils/helperFunctions.js';
 import {
   mapAuthorsFromBooks,
@@ -17,7 +18,7 @@ import {
   mapAuthorBooks,
   mapGenreBooks,
 } from './utils/bookMapping.js';
-import { createBookSchema, validateInput } from '../models/bookModel.js';
+import { createBookSchema, updateBookSchema } from '../models/bookModel.js';
 
 const bookCollection = db.collection('books');
 
@@ -75,6 +76,7 @@ export const getBookById = async (req, res, next) => {
 // Update Book
 export const updateBook = async (req, res, next) => {
   try {
+    validateInput(req.body, updateBookSchema);
     const { bid } = req.params;
 
     const doc = await getDocumentById(bookCollection, bid, 'Book');

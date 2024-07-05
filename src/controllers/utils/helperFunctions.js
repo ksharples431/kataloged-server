@@ -43,3 +43,11 @@ export const validateSortOptions = (
     throw new ValidationError('Invalid sort options');
   }
 };
+
+export const validateInput = (data, schema) => {
+  const { error } = schema.validate(data);
+  if (error) {
+    throw new ValidationError(error.details[0].message);
+  }
+};
+

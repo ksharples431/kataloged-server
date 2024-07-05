@@ -1,23 +1,26 @@
 import db, { admin } from '../config/firebaseConfig.js';
-import HttpError from '../models/httpErrorModel.js';
+import HttpError, { DatabaseError} from '../models/httpErrorModel.js';
 import {
   formatResponseData,
   formatSuccessResponse,
   getDocumentById,
+  validateInput,
 } from './utils/helperFunctions.js';
+import {
+  createUserSchema,
+  googleSignInSchema,
+  updateUserSchema,
+} from '../models/userModel.js';
 
 const userCollection = db.collection('users');
 
 export const googleSignIn = async (req, res, next) => {
   try {
+    validateInput(req.body, googleSignInSchema);
+
     const { email } = req.body;
     const idToken = req.headers.authorization.split('Bearer ')[1];
 
-    if (!email || !idToken) {
-      throw new HttpError('Email and token are required', 400);
-    }
-
-    // Verify the ID token
     const decodedToken = await admin.auth().verifyIdToken(idToken);
     const uid = decodedToken.uid;
 
@@ -25,10 +28,9 @@ export const googleSignIn = async (req, res, next) => {
     let isNewUser = false;
 
     if (!user.exists) {
-      // New user, create an account
       isNewUser = true;
       const newUser = {
-        username: decodedToken.name || email.split('@')[0], // Use name from Google or generate from email
+        username: decodedToken.name || email.split('@')[0], 
         email,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -38,10 +40,9 @@ export const googleSignIn = async (req, res, next) => {
       user = await userCollection.doc(uid).get();
 
       if (!user.exists) {
-        throw new HttpError('Failed to create user', 500);
+        throw new DatabaseError('googleSignIn');
       }
     } else {
-      // Existing user, update last login time
       await userCollection.doc(uid).update({
         lastLoginAt: admin.firestore.FieldValue.serverTimestamp(),
       });
@@ -66,14 +67,11 @@ export const googleSignIn = async (req, res, next) => {
 
 export const createUser = async (req, res, next) => {
   try {
+    validateInput(req.body, createUserSchema);
+
     const { username, email } = req.body;
     const idToken = req.headers.authorization.split('Bearer ')[1];
 
-    if (!username || !email || !idToken) {
-      throw new HttpError('Username, email, and token are required', 400);
-    }
-
-    // Verify the ID token
     const decodedToken = await admin.auth().verifyIdToken(idToken);
     const uid = decodedToken.uid;
 
@@ -94,7 +92,7 @@ export const createUser = async (req, res, next) => {
     const createdUser = await userCollection.doc(uid).get();
 
     if (!createdUser.exists) {
-      throw new HttpError('Failed to create user', 500);
+      throw new DatabaseError('createUser');
     }
 
     const user = formatResponseData(createdUser);
@@ -123,6 +121,8 @@ export const getUser = async (req, res, next) => {
 
 export const updateUser = async (req, res, next) => {
   try {
+    validateInput(req.body, updateUserSchema); 
+
     const { uid } = req.params;
     const doc = await getDocumentById(userCollection, uid, 'User');
 

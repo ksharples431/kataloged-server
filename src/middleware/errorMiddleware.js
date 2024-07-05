@@ -28,7 +28,7 @@ export const errorHandler = (err, req, res, next) => {
   let error =
     err instanceof HttpError ? err : mapGrpcErrorToHttpError(err);
 
-  res.status(error.code).json({
+  res.status(error.statusCode).json({
     success: false,
     message: error.message || 'An unknown error occurred',
     stack: process.env.NODE_ENV === 'production' ? undefined : error.stack,

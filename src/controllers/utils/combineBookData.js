@@ -1,5 +1,5 @@
 import db from '../../config/firebaseConfig.js';
-import { formatResponseData } from '../utils/formatResponseData.js';
+import { formatResponseData } from './helperFunctions.js';
 
 const bookCollection = db.collection('books');
 

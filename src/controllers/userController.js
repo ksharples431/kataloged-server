@@ -1,10 +1,10 @@
 import db, { admin } from '../config/firebaseConfig.js';
 import HttpError from '../models/httpErrorModel.js';
-import { getDocumentById } from '../utils/getDocById.js';
 import {
   formatResponseData,
   formatSuccessResponse,
-} from '../utils/formatResponseData.js';
+  getDocumentById,
+} from './utils/helperFunctions.js';
 
 const userCollection = db.collection('users');
 

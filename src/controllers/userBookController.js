@@ -1,15 +1,15 @@
 import db from '../config/firebaseConfig.js';
 import HttpError from '../models/httpErrorModel.js';
 import firebase from 'firebase-admin';
-import { getDocumentById } from '../utils/getDocById.js';
 import {
   formatResponseData,
   formatSuccessResponse,
-} from '../utils/formatResponseData.js';
+  getDocumentById,
+} from './utils/helperFunctions.js';
 import {
   fetchCombinedBookData,
   fetchCombinedBooksData,
-} from '../utils/combineBookData.js';
+} from './utils/combineBookData.js';
 
 const userBookCollection = db.collection('userBooks');
 

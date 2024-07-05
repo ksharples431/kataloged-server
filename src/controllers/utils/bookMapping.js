@@ -2,7 +2,7 @@ import db from '../../config/firebaseConfig.js';
 
 const bookCollection = db.collection('books');
 
-// Generic function to map entities from books
+// Generic function to map categories from books
 const mapCategoryFromBooks = async (categoryField) => {
   try {
     const booksSnapshot = await bookCollection.get();
@@ -16,7 +16,7 @@ const mapCategoryFromBooks = async (categoryField) => {
           categoryMap.get(categoryValue).bookCount += 1;
         } else {
           categoryMap.set(categoryValue, {
-            name: categoryValue,
+            [categoryField]: categoryValue,
             bookCount: 1,
           });
         }

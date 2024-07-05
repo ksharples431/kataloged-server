@@ -1,40 +1,7 @@
-const validateSortOptions = (
-  sortBy,
-  order,
-  validSortBy = ['title', 'author', 'updatedAt'],
-  validOrder = ['asc', 'desc']
-) => {
-  if (!validSortBy.includes(sortBy) || !validOrder.includes(order)) {
-    throw new ValidationError('Invalid sort options');
-  }
-};
-
-const fetchAndSortBooks = async (collection, sortBy, order) => {
-  const querySnapshot = await collection.orderBy(sortBy, order).get();
-  const items = querySnapshot.docs.map(formatResponseData);
-  return items;
-};
-
-const handleFetchRequest = async (
-  fetchFunction,
-  req,
-  res,
-  next,
-  message
-) => {
-  try {
-    const { sortBy = 'title', order = 'asc' } = req.query;
-    const validSortBy = ['title', 'author', 'updatedAt'];
-    const validOrder = ['asc', 'desc'];
-
-    validateSortOptions(sortBy, order, validSortBy, validOrder);
-
-    const items = await fetchFunction(req, sortBy, order);
-    res.status(200).json(formatSuccessResponse(message, { items }));
-  } catch (error) {
-    next(error);
-  }
-};
+import {
+  ValidationError,
+  NotFoundError
+} from '../../models/httpErrorModel.js';
 
 export const formatResponseData = (doc) => ({
   id: doc.id,
@@ -55,20 +22,24 @@ export const convertFirestoreTimestamp = (timestamp) => {
   return date.toISOString();
 };
 
-export const getDocumentById = async (collection, id, errorMessage) => {
+export const getDocumentById = async (collection, id) => {
   if (!id) {
-    throw new HttpError(`${errorMessage} ID is required`, 400);
+    throw new ValidationError( 'Id required');
   }
   const doc = await collection.doc(id).get();
   if (!doc.exists) {
-    throw new HttpError(`${errorMessage} not found`, 404);
+    throw new NotFoundError('Document');
   }
   return doc;
 };
 
-export const validateInput = (input, schema) => {
-  const { error } = schema.validate(input);
-  if (error) {
-    throw new ValidationError(error.details[0].message);
+export const validateSortOptions = (
+  sortBy,
+  order,
+  validSortBy = ['title', 'author', 'genre', 'updatedAt', 'bookCount'],
+  validOrder = ['asc', 'desc']
+) => {
+  if (!validSortBy.includes(sortBy) || !validOrder.includes(order)) {
+    throw new ValidationError('Invalid sort options');
   }
 };

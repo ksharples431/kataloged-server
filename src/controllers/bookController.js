@@ -58,7 +58,7 @@ export const createBook = async (req, res, next) => {
   }
 };
 
-// Get Book by ID
+// Get Book by Id
 export const getBookById = async (req, res, next) => {
   try {
     const { bid } = req.params;
@@ -77,8 +77,8 @@ export const getBookById = async (req, res, next) => {
 export const updateBook = async (req, res, next) => {
   try {
     validateInput(req.body, updateBookSchema);
-    const { bid } = req.params;
 
+    const { bid } = req.params;
     const doc = await getDocumentById(bookCollection, bid, 'Book');
 
     const currentData = doc.data();
@@ -102,8 +102,8 @@ export const updateBook = async (req, res, next) => {
     await doc.ref.update(updateData);
 
     const updatedDoc = await doc.ref.get();
-
     const book = formatResponseData(updatedDoc);
+    
     res
       .status(200)
       .json(formatSuccessResponse('Book updated successfully', { book }));

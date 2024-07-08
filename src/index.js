@@ -7,6 +7,7 @@ import userRoutes from './routes/userRoutes.js';
 import userBookRoutes from './routes/userBookRoutes.js';
 import { notFound, errorHandler } from './middleware/errorMiddleware.js';
 import { setHeaders } from './middleware/headersMiddleware.js';
+import  verifyToken  from './middleware/authMiddleware.js';
 
 dotenv.config();
 
@@ -36,6 +37,10 @@ app.use(
 
 // Enable pre-flight requests for all routes
 app.options('*', cors());
+
+// app.use('/api/users', verifyToken);
+// app.use('/api/userBooks', verifyToken);
+app.use('/api/books', verifyToken);
 
 app.use('/api/books', bookRoutes);
 app.use('/api/users', userRoutes);

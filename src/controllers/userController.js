@@ -1,10 +1,12 @@
 import db, { admin } from '../config/firebaseConfig.js';
-import HttpError, { DatabaseError} from '../models/httpErrorModel.js';
+import HttpError, { DatabaseError } from '../models/httpErrorModel.js';
 import {
   formatResponseData,
   formatSuccessResponse,
   getDocumentById,
   validateInput,
+  getCurrentUserUID,
+  convertFirestoreTimestamp,
 } from './utils/helperFunctions.js';
 import {
   createUserSchema,
@@ -30,7 +32,7 @@ export const googleSignIn = async (req, res, next) => {
     if (!user.exists) {
       isNewUser = true;
       const newUser = {
-        username: decodedToken.name || email.split('@')[0], 
+        username: decodedToken.name || email.split('@')[0],
         email,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -48,7 +50,12 @@ export const googleSignIn = async (req, res, next) => {
       });
     }
 
-    const formattedUser = formatResponseData(user);
+    const formattedUser = {
+      uid: user.id,
+      ...user.data(),
+      updatedAt: convertFirestoreTimestamp(user.data().updatedAt),
+    };
+    console.log(formattedUser);
 
     res
       .status(200)
@@ -105,68 +112,111 @@ export const createUser = async (req, res, next) => {
   }
 };
 
-export const getUser = async (req, res, next) => {
+export const loginUser = async (req, res, next) => {
   try {
-    const { uid } = req.params;
-    const doc = await getDocumentById(userCollection, uid, 'User');
+    validateInput(req.body, loginSchema);
 
-    const user = formatResponseData(doc);
-    res
-      .status(200)
-      .json(formatSuccessResponse('User successfully fetched', { user }));
-  } catch (error) {
-    next(error);
-  }
-};
+    const { email, password } = req.body;
 
-export const updateUser = async (req, res, next) => {
-  try {
-    validateInput(req.body, updateUserSchema); 
+    const userCredential = await admin
+      .auth()
+      .signInWithEmailAndPassword(email, password);
+    const uid = userCredential.user.uid;
 
-    const { uid } = req.params;
-    const doc = await getDocumentById(userCollection, uid, 'User');
+    const user = await userCollection.doc(uid).get();
 
-    const currentData = doc.data();
-    const updateData = { ...req.body };
-
-    delete updateData.id;
-    delete updateData.createdAt;
-
-    const hasChanges = Object.entries(updateData).some(
-      ([key, value]) => currentData[key] !== value
-    );
-
-    if (!hasChanges) {
-      const user = formatResponseData(doc);
-      return res
-        .status(200)
-        .json(formatSuccessResponse('No changes detected', { user }));
+    if (!user.exists) {
+      throw new DatabaseError('login');
     }
 
-    updateData.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
-    await doc.ref.update(updateData);
+    await userCollection.doc(uid).update({
+      lastLoginAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
 
-    const updatedDoc = await doc.ref.get();
+    const formattedUser = formatResponseData(user);
 
-    const user = formatResponseData(updatedDoc);
-    res
-      .status(200)
-      .json(formatSuccessResponse('User updated successfully', { user }));
+    const customToken = await admin.auth().createCustomToken(uid);
+
+    res.status(200).json(
+      formatSuccessResponse('User logged in successfully', {
+        user: formattedUser,
+        token: customToken,
+      })
+    );
   } catch (error) {
-    next(error);
+    if (
+      error.code === 'auth/user-not-found' ||
+      error.code === 'auth/wrong-password'
+    ) {
+      next(new HttpError('Invalid email or password', 401));
+    } else {
+      next(error);
+    }
   }
 };
 
-export const deleteUser = async (req, res, next) => {
-  try {
-    const { uid } = req.params;
-    const doc = await getDocumentById(userCollection, uid, 'User');
+// export const getUser = async (req, res, next) => {
+//   try {
+//     const { uid } = req.params;
+//     const doc = await getDocumentById(userCollection, uid, 'User');
 
-    await doc.ref.delete();
-    res
-      .status(200)
-      .json(formatSuccessResponse('User deleted successfully', null));
-  } catch (error) {
-    next(error);
-  }
-};
+//     const user = formatResponseData(doc);
+//     res
+//       .status(200)
+//       .json(formatSuccessResponse('User successfully fetched', { user }));
+//   } catch (error) {
+//     next(error);
+//   }
+// };
+
+// export const updateUser = async (req, res, next) => {
+//   try {
+//     validateInput(req.body, updateUserSchema);
+
+//     const { uid } = req.params;
+//     const doc = await getDocumentById(userCollection, uid, 'User');
+
+//     const currentData = doc.data();
+//     const updateData = { ...req.body };
+
+//     delete updateData.id;
+//     delete updateData.createdAt;
+
+//     const hasChanges = Object.entries(updateData).some(
+//       ([key, value]) => currentData[key] !== value
+//     );
+
+//     if (!hasChanges) {
+//       const user = formatResponseData(doc);
+//       return res
+//         .status(200)
+//         .json(formatSuccessResponse('No changes detected', { user }));
+//     }
+
+//     updateData.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
+//     await doc.ref.update(updateData);
+
+//     const updatedDoc = await doc.ref.get();
+
+//     const user = formatResponseData(updatedDoc);
+//     res
+//       .status(200)
+//       .json(formatSuccessResponse('User updated successfully', { user }));
+//   } catch (error) {
+//     next(error);
+//   }
+// };
+
+// export const deleteUser = async (req, res, next) => {
+//   try {
+//     const { uid } = req.params;
+//     const doc = await getDocumentById(userCollection, uid, 'User');
+
+//     await doc.ref.delete();
+//     res
+//       .status(200)
+//       .json(formatSuccessResponse('User deleted successfully', null));
+//   } catch (error) {
+//     next(error);
+//   }
+// };

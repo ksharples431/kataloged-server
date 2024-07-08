@@ -2,17 +2,20 @@ import express from 'express';
 import {
   googleSignIn,
   createUser,
-  getUser,
-  updateUser,
-  deleteUser,
+  loginUser
+  // getUser,
+  // updateUser,
+  // deleteUser,
 } from '../controllers/userController.js';
 
 const router = express.Router();
 
-router.post('/users/google-signin', googleSignIn);
-router.post('/users', createUser);
-router.get('/users/:uid', getUser);
-router.patch('/users/:uid', updateUser);
-router.delete('/users/:uid', deleteUser);
+router.post('/google-signin', googleSignIn);
+router.post('/signup', createUser);
+router.get('/login', loginUser);
+
+// router.get('/:uid', getUser);
+// router.patch('/:uid', updateUser);
+// router.delete('/:uid', deleteUser);
 
 export default router;

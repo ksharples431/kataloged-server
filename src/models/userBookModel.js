@@ -1,8 +1,8 @@
 import Joi from 'joi';
 
 export const addUserBookSchema = Joi.object({
-  uid: Joi.string().required(),
-  bid: Joi.string().required(),
+  uid: Joi.string(),
+  bid: Joi.string(),
   seriesName: Joi.string(),
   seriesNumber: Joi.string(),
   format: Joi.string(),

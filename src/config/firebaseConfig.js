@@ -1,22 +1,28 @@
 import admin from 'firebase-admin';
 import { getFirestore } from 'firebase-admin/firestore';
+import { initializeApp } from 'firebase/app';
+import { getAuth } from 'firebase/auth';
 import { readFile } from 'fs/promises';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-let firebaseApp;
+let firebaseAdminApp;
+let firebaseClientApp;
+let auth;
 
-async function initializeFirebase() {
+// Initialize Firebase Admin SDK
+async function initializeFirebaseAdmin() {
   if (process.env.NODE_ENV === 'production') {
-    // Use application default credentials in production
-    firebaseApp = admin.initializeApp({
+    firebaseAdminApp = admin.initializeApp({
       credential: admin.credential.applicationDefault(),
     });
   } else {
-    // Use a service account file for local development
     try {
       const serviceAccountPath = join(
         __dirname,
@@ -26,7 +32,7 @@ async function initializeFirebase() {
         await readFile(serviceAccountPath, 'utf8')
       );
 
-      firebaseApp = admin.initializeApp({
+      firebaseAdminApp = admin.initializeApp({
         credential: admin.credential.cert(serviceAccount),
       });
     } catch (error) {
@@ -36,9 +42,26 @@ async function initializeFirebase() {
   }
 }
 
-await initializeFirebase();
+// Initialize Firebase Client SDK
+function initializeFirebaseClient() {
+  const firebaseConfig = {
+    apiKey: process.env.FB_API_KEY,
+    authDomain: process.env.FB_AUTH_DOMAIN,
+    projectId: process.env.FB_PROJECT_ID,
+    storageBucket: process.env.FB_STORAGE_BUCKET,
+    messagingSenderId: process.env.FB_MESSAGING_SENDER_ID,
+    appId: process.env.FB_APP_ID,
+    // measurementId: process.env.FB_MEASUREMENT_ID,
+  };
+
+  firebaseClientApp = initializeApp(firebaseConfig);
+  auth = getAuth(firebaseClientApp);
+}
+
+await initializeFirebaseAdmin();
+initializeFirebaseClient();
 
 const db = getFirestore();
 
 export default db;
-export { admin };
+export { admin, auth };

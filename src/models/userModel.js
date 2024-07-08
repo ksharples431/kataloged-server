@@ -7,7 +7,8 @@ export const createUserSchema = Joi.object({
 
 export const googleSignInSchema = Joi.object({
   email: Joi.string().email().required(),
-  idToken: Joi.string().required(),
+  idToken: Joi.string().optional(),
+  username: Joi.string().optional(),
 });
 
 export const updateUserSchema = Joi.object({

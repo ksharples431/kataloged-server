@@ -1,6 +1,8 @@
+import { onAuthStateChanged } from 'firebase/auth';
+import { auth } from '../../config/firebaseConfig.js';
 import {
   ValidationError,
-  NotFoundError
+  NotFoundError,
 } from '../../models/httpErrorModel.js';
 
 export const formatResponseData = (doc) => ({
@@ -24,7 +26,7 @@ export const convertFirestoreTimestamp = (timestamp) => {
 
 export const getDocumentById = async (collection, id) => {
   if (!id) {
-    throw new ValidationError( 'Id required');
+    throw new ValidationError('Id required');
   }
   const doc = await collection.doc(id).get();
   if (!doc.exists) {
@@ -49,5 +51,17 @@ export const validateInput = (data, schema) => {
   if (error) {
     throw new ValidationError(error.details[0].message);
   }
+};
+
+export const getCurrentUserUID = () => {
+  return new Promise((resolve, reject) => {
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        resolve(user.id);
+      } else {
+        reject(new Error('No user is signed in'));
+      }
+    });
+  });
 };
 

@@ -1,7 +1,7 @@
 import express from 'express';
 import {
   googleSignIn,
-  createUser,
+  signupUser,
   loginUser
   // getUser,
   // updateUser,
@@ -11,7 +11,7 @@ import {
 const router = express.Router();
 
 router.post('/google-signin', googleSignIn);
-router.post('/signup', createUser);
+router.post('/signup', signupUser);
 router.get('/login', loginUser);
 
 // router.get('/:uid', getUser);

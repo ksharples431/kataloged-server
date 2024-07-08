@@ -72,7 +72,7 @@ export const googleSignIn = async (req, res, next) => {
   }
 };
 
-export const createUser = async (req, res, next) => {
+export const signupUser = async (req, res, next) => {
   try {
     validateInput(req.body, createUserSchema);
 

@@ -1,5 +1,6 @@
 import db from '../config/firebaseConfig.js';
 import firebase from 'firebase-admin';
+import axios from 'axios';
 import { sortBooks } from './utils/bookSorting.js';
 import {
   ValidationError,
@@ -93,6 +94,86 @@ export const getBookById = async (req, res, next) => {
     next(error);
   }
 };
+
+export const searchBook = async (req, res, next) => {
+  try {
+    const { title } = req.query;
+
+    if (!title) {
+      return res.status(400).json({ error: 'Book title is required' });
+    }
+
+    // Search in your database first
+    const snapshot = await bookCollection
+      .where('title', '>=', title)
+      .where('title', '<=', title + '\uf8ff')
+      .get();
+
+    if (!snapshot.empty) {
+      // Book found in the database
+      const books = snapshot.docs.map((doc) =>
+        formatResponseData(doc, 'book')
+      );
+      console.log(books)
+      return res.json({
+        message: 'Books found in database',
+        data: { books },
+      });
+    }
+    console.log(process.env.GOOGLE_BOOKS_API_KEY);
+
+
+    try {
+      const googleBooksResponse = await axios.get(
+        'https://www.googleapis.com/books/v1/volumes',
+        {
+          params: {
+            q: title,
+            key: process.env.GOOGLE_BOOKS_API_KEY,
+          },
+          headers: {
+            Referer: 'http://localhost:8080/', 
+          },
+        }
+      );
+
+      if (
+        googleBooksResponse.data.items &&
+        googleBooksResponse.data.items.length > 0
+      ) {
+        // Process and return Google Books data
+        const googleBooks = googleBooksResponse.data.items.map((item) => ({
+          title: item.volumeInfo.title,
+          authors: item.volumeInfo.authors,
+          description: item.volumeInfo.description,
+          // genre: item.volumeInfo.genre,
+          imageLinks: item.volumeInfo.imageLinks,
+          // Add any other fields you want to include
+        }));
+        return res.json({
+          message: 'Books found in Google Books API',
+          data: { books: googleBooks },
+        });
+      } else {
+        return res.status(404).json({ message: 'No books found' });
+      }
+    } catch (googleError) {
+      console.error(
+        'Google Books API Error:',
+        googleError.response
+          ? googleError.response.data
+          : googleError.message
+      );
+      return res
+        .status(503)
+        .json({ error: 'Unable to fetch books from external API' });
+    }
+  } catch (error) {
+    next(error);
+  }
+};
+
+
 
 // Update Book
 // export const updateBook = async (req, res, next) => {

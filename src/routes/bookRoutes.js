@@ -2,7 +2,8 @@ import express from 'express';
 import {
   createBook,
   getBooks,
-  // getBookById,
+  getBookById,
+  searchBook,
   // updateBook,
   // deleteBook,
   // getAuthors,
@@ -15,11 +16,12 @@ const router = express.Router();
 
 router.post('/', createBook);
 router.get('/', getBooks);
+router.get('/search', searchBook);
 // router.get('/authors', getAuthors);
 // router.get('/genres', getGenres);
 // router.get('/author/:author', getBooksByAuthor);
 // router.get('/genre/:genre', getBooksByGenre);
-// router.get('/:bid', getBookById);
+router.get('/:bid', getBookById);
 // router.put('/:bid', updateBook);
 // router.delete('/:bid', deleteBook);
 

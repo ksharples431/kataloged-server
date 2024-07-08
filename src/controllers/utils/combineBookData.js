@@ -4,7 +4,8 @@ import { formatResponseData } from './helperFunctions.js';
 const bookCollection = db.collection('books');
 
 export const fetchCombinedBookData = async (userBookDoc) => {
-  const userBookData = formatResponseData(userBookDoc);
+  const userBookData = formatResponseData(userBookDoc, 'ubid');
+  console.log(userBookData)
   const bookDoc = await bookCollection.doc(userBookData.bid).get();
 
   if (!bookDoc.exists) {
@@ -16,7 +17,7 @@ export const fetchCombinedBookData = async (userBookDoc) => {
 
   return {
     ...userBookData,
-    bookInfo: bookData,
+    ...bookData,
   };
 };
 

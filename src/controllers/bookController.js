@@ -64,8 +64,9 @@ export const getBooks = async (req, res, next) => {
     const { sortBy = 'title', order = 'asc' } = req.query;
     validateSortOptions(sortBy, order);
 
-    const querySnapshot = await bookCollection.get();
-    let books = querySnapshot.docs.map(formatResponseData);
+    const snapshot = await bookCollection.get();
+    let books = snapshot.docs.map((doc) => formatResponseData(doc, 'bid'));
+
     books = sortBooks(books, sortBy, order);
 
     res

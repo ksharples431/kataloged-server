@@ -61,9 +61,7 @@ export const createUserBook = async (req, res, next) => {
 // Get User Books with sorting
 export const getUserBooks = async (req, res, next) => {
   try {
-    console.log(req.user)
     const uid = req.user.uid;
-    console.log(uid) 
     const { sortBy = 'title', order = 'asc' } = req.query;
     validateSortOptions(sortBy, order);
 
@@ -82,6 +80,7 @@ export const getUserBooks = async (req, res, next) => {
     let userBooksWithFullInfo = await fetchCombinedBooksData(
       snapshot.docs
     );
+
     userBooksWithFullInfo = sortBooks(
       userBooksWithFullInfo,
       sortBy,

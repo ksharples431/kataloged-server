@@ -5,9 +5,9 @@ import {
   NotFoundError,
 } from '../../models/httpErrorModel.js';
 
-export const formatResponseData = (doc) => ({
-  id: doc.id,
+export const formatResponseData = (doc, idField = 'id') => ({
   ...doc.data(),
+  [idField]: doc.id,
   updatedAt: convertFirestoreTimestamp(doc.data().updatedAt),
 });
 

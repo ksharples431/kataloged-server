@@ -55,7 +55,6 @@ export const googleSignIn = async (req, res, next) => {
       ...user.data(),
       updatedAt: convertFirestoreTimestamp(user.data().updatedAt),
     };
-    console.log(formattedUser);
 
     res
       .status(200)

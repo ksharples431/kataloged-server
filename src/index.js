@@ -39,8 +39,8 @@ app.use(
 app.options('*', cors());
 
 // app.use('/api/users', verifyToken);
-app.use('/api/userBooks', verifyToken);
 app.use('/api/books', verifyToken);
+app.use('/api/userBooks', verifyToken);
 
 app.use('/api/books', bookRoutes);
 app.use('/api/users', userRoutes);

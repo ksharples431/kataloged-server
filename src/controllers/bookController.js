@@ -19,7 +19,10 @@ import {
   mapAuthorBooks,
   mapGenreBooks,
 } from './utils/bookMapping.js';
-import { createBookSchema, updateBookSchema } from '../models/bookModel.js';
+import {
+  createBookSchema,
+  updateBookSchema,
+} from '../models/bookModel.js';
 
 const bookCollection = db.collection('books');
 
@@ -27,7 +30,7 @@ const bookCollection = db.collection('books');
 export const createBook = async (req, res, next) => {
   try {
     validateInput(req.body, createBookSchema);
-    
+
     const { title, author, ...otherFields } = req.body;
 
     if (!title || !author) {
@@ -114,14 +117,13 @@ export const searchBook = async (req, res, next) => {
       const books = snapshot.docs.map((doc) =>
         formatResponseData(doc, 'book')
       );
-      console.log(books)
+      console.log(books);
       return res.json({
         message: 'Books found in database',
         data: { books },
       });
     }
     console.log(process.env.GOOGLE_BOOKS_API_KEY);
-
 
     try {
       const googleBooksResponse = await axios.get(
@@ -132,7 +134,7 @@ export const searchBook = async (req, res, next) => {
             key: process.env.GOOGLE_BOOKS_API_KEY,
           },
           headers: {
-            Referer: 'http://localhost:8080/', 
+            Referer: 'http://localhost:8080/',
           },
         }
       );
@@ -141,12 +143,12 @@ export const searchBook = async (req, res, next) => {
         googleBooksResponse.data.items &&
         googleBooksResponse.data.items.length > 0
       ) {
-        // Process and return Google Books data
+        console.log(googleBooksResponse.data.items);
         const googleBooks = googleBooksResponse.data.items.map((item) => ({
           title: item.volumeInfo.title,
           authors: item.volumeInfo.authors,
           description: item.volumeInfo.description,
-          // genre: item.volumeInfo.genre,
+          genre: item.volumeInfo.genre,
           imageLinks: item.volumeInfo.imageLinks,
           // Add any other fields you want to include
         }));
@@ -172,8 +174,6 @@ export const searchBook = async (req, res, next) => {
     next(error);
   }
 };
-
-
 
 // Update Book
 // export const updateBook = async (req, res, next) => {
@@ -205,7 +205,7 @@ export const searchBook = async (req, res, next) => {
 
 //     const updatedDoc = await doc.ref.get();
 //     const book = formatResponseData(updatedDoc);
-    
+
 //     res
 //       .status(200)
 //       .json(formatSuccessResponse('Book updated successfully', { book }));

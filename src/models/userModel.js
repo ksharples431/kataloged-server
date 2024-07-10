@@ -15,3 +15,7 @@ export const updateUserSchema = Joi.object({
   username: Joi.string().optional(),
   email: Joi.string().email().optional(),
 });
+
+export const loginUserSchema = Joi.object({
+  email: Joi.string().email().optional(),
+});

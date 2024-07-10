@@ -12,6 +12,7 @@ import {
   createUserSchema,
   googleSignInSchema,
   updateUserSchema,
+  loginUserSchema,
 } from '../models/userModel.js';
 
 const userCollection = db.collection('users');
@@ -19,6 +20,15 @@ const userCollection = db.collection('users');
 export const googleSignIn = async (req, res, next) => {
   try {
     validateInput(req.body, googleSignInSchema);
+    console.log(req.body)
+     if (
+       !req.headers.authorization ||
+       !req.headers.authorization.startsWith('Bearer ')
+     ) {
+       throw new HttpError(
+         'Missing or invalid authorization token'
+       );
+     }
 
     const { email } = req.body;
     const idToken = req.headers.authorization.split('Bearer ')[1];
@@ -113,7 +123,7 @@ export const signupUser = async (req, res, next) => {
 
 export const loginUser = async (req, res, next) => {
   try {
-    validateInput(req.body, loginSchema);
+    validateInput(req.body, loginUserSchema);
 
     const { email, password } = req.body;
 

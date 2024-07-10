@@ -2,7 +2,7 @@ import express from 'express';
 import {
   createUserBook,
   getUserBooks,
-  // getUserBookById,
+  getUserBookById,
   // updateUserBook,
   // deleteUserBook,
 } from '../controllers/userBookController.js';
@@ -11,7 +11,7 @@ const router = express.Router();
 
 router.post('/', createUserBook);
 router.get('/', getUserBooks);
-// router.get('/:uid/:bid', getUserBookById);
+router.get('/:ubid', getUserBookById);
 // router.patch('/:uid/:bid', updateUserBook);
 // router.delete('/:uid/:bid', deleteUserBook);
 

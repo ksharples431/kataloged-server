@@ -125,24 +125,18 @@ export const loginUser = async (req, res, next) => {
   try {
     validateInput(req.body, loginUserSchema);
 
-    const { email, password } = req.body;
+    const idToken = req.headers.authorization.split('Bearer ')[1];
 
-    const userCredential = await admin
-      .auth()
-      .signInWithEmailAndPassword(email, password);
-    const uid = userCredential.user.uid;
+    const decodedToken = await admin.auth().verifyIdToken(idToken);
+    const uid = decodedToken.uid;
 
-    const user = await userCollection.doc(uid).get();
+    const userDoc = await userCollection.doc(uid).get();
 
-    if (!user.exists) {
+    if (!userDoc.exists) {
       throw new DatabaseError('login');
     }
 
-    await userCollection.doc(uid).update({
-      lastLoginAt: admin.firestore.FieldValue.serverTimestamp(),
-    });
-
-    const formattedUser = formatResponseData(user);
+    const formattedUser = formatResponseData(userDoc);
 
     const customToken = await admin.auth().createCustomToken(uid);
 
@@ -154,10 +148,10 @@ export const loginUser = async (req, res, next) => {
     );
   } catch (error) {
     if (
-      error.code === 'auth/user-not-found' ||
-      error.code === 'auth/wrong-password'
+      error.code === 'auth/argument-error' || 
+      error.message.includes('The Firebase ID token is invalid or expired') 
     ) {
-      next(new HttpError('Invalid email or password', 401));
+      next(new HttpError('Invalid token', 401));
     } else {
       next(error);
     }

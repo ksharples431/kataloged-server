@@ -30,7 +30,7 @@ export const createUserBook = async (req, res, next) => {
   try {
     validateInput(req.body, addUserBookSchema);
 
-    const { bid, ...otherFields } = req.body;
+    const { uid, bid, ...otherFields } = req.body;
 
     const newUserBook = {
       uid,

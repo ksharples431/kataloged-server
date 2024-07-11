@@ -25,7 +25,8 @@
     "express-request-id": "^3.0.0",
     "firebase": "^10.12.3",
     "firebase-admin": "^12.2.0",
-    "joi": "^17.13.3"
+    "joi": "^17.13.3",
+    "node-cache": "^5.1.2"
   },
   "devDependencies": {
     "chai": "^5.1.1",

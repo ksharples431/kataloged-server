@@ -80,6 +80,7 @@ export const createUserBook = async (req, res, next) => {
 export const getUserBooks = async (req, res, next) => {
   try {
     const uid = req.user.uid;
+    console.log(req.user)
     const { sortBy = 'title', order = 'asc' } = req.query;
     validateSortOptions(sortBy, order);
 

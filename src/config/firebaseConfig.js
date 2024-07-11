@@ -62,6 +62,7 @@ await initializeFirebaseAdmin();
 initializeFirebaseClient();
 
 const db = getFirestore();
+const adminAuth = admin.auth()
 
 export default db;
-export { admin, auth };
+export { admin, adminAuth, auth };

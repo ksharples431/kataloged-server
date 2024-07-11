@@ -6,12 +6,13 @@ import {
   // updateUserBook,
   // deleteUserBook,
 } from '../controllers/userBookController.js';
+import verifyToken from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
-router.post('/', createUserBook);
-router.get('/', getUserBooks);
-router.get('/:ubid', getUserBookById);
+router.post('/', verifyToken, createUserBook);
+router.get('/',  verifyToken, getUserBooks);
+router.get('/:ubid', verifyToken,  getUserBookById);
 // router.patch('/:uid/:bid', updateUserBook);
 // router.delete('/:uid/:bid', deleteUserBook);
 

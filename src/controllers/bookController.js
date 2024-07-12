@@ -26,42 +26,6 @@ import {
 
 const bookCollection = db.collection('books');
 
-// Create Book
-export const createBook = async (req, res, next) => {
-  try {
-    validateInput(req.body, createBookSchema);
-
-    const { title, author, ...otherFields } = req.body;
-
-    if (!title || !author) {
-      throw new ValidationError('Title and author required');
-    }
-
-    const newBook = {
-      title,
-      author,
-      ...otherFields,
-      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-    };
-
-    const docRef = await bookCollection.add(newBook);
-    const doc = await docRef.get();
-
-    if (!doc.exists) {
-      throw new DatabaseError('create book');
-    }
-
-    const book = formatResponseData(doc);
-
-    res
-      .status(201)
-      .json(formatSuccessResponse('Book added successfully', { book }));
-  } catch (error) {
-    next(error);
-  }
-};
-
 // Get Books with sorting
 export const getBooks = async (req, res, next) => {
   try {
@@ -73,11 +37,10 @@ export const getBooks = async (req, res, next) => {
 
     books = sortBooks(books, sortBy, order);
 
-    res
-      .status(200)
-      .json(
-        formatSuccessResponse('Books fetched successfully', { books })
-      );
+    res.status(200).json({
+      message: 'Books fetched successfully',
+      books,
+    });
   } catch (error) {
     next(error);
   }
@@ -90,90 +53,127 @@ export const getBookById = async (req, res, next) => {
     const doc = await getDocumentById(bookCollection, bid, 'Book');
 
     const book = formatResponseData(doc);
-    res
-      .status(200)
-      .json(formatSuccessResponse('Book successfully fetched', { book }));
+    res.status(200).json({
+      message: 'Book fetched successfully',
+      book,
+    });
   } catch (error) {
     next(error);
   }
 };
 
-export const searchBook = async (req, res, next) => {
-  try {
-    const { title } = req.query;
+// Create Book
+// export const createBook = async (req, res, next) => {
+//   try {
+//     validateInput(req.body, createBookSchema);
 
-    if (!title) {
-      return res.status(400).json({ error: 'Book title is required' });
-    }
+//     const { title, author, ...otherFields } = req.body;
 
-    // Search in your database first
-    const snapshot = await bookCollection
-      .where('title', '>=', title)
-      .where('title', '<=', title + '\uf8ff')
-      .get();
+//     if (!title || !author) {
+//       throw new ValidationError('Title and author required');
+//     }
 
-    if (!snapshot.empty) {
-      // Book found in the database
-      const books = snapshot.docs.map((doc) =>
-        formatResponseData(doc, 'book')
-      );
-      console.log(books);
-      return res.json({
-        message: 'Books found in database',
-        data: { books },
-      });
-    }
-    console.log(process.env.GOOGLE_BOOKS_API_KEY);
+//     const newBook = {
+//       title,
+//       author,
+//       ...otherFields,
+//       createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+//       updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+//     };
 
-    try {
-      const googleBooksResponse = await axios.get(
-        'https://www.googleapis.com/books/v1/volumes',
-        {
-          params: {
-            q: title,
-            key: process.env.GOOGLE_BOOKS_API_KEY,
-          },
-          headers: {
-            Referer: 'http://localhost:8080/',
-          },
-        }
-      );
+//     const docRef = await bookCollection.add(newBook);
+//     const doc = await docRef.get();
 
-      if (
-        googleBooksResponse.data.items &&
-        googleBooksResponse.data.items.length > 0
-      ) {
-        console.log(googleBooksResponse.data.items);
-        const googleBooks = googleBooksResponse.data.items.map((item) => ({
-          title: item.volumeInfo.title,
-          authors: item.volumeInfo.authors,
-          description: item.volumeInfo.description,
-          genre: item.volumeInfo.genre,
-          imageLinks: item.volumeInfo.imageLinks,
-          // Add any other fields you want to include
-        }));
-        return res.json({
-          message: 'Books found in Google Books API',
-          data: { books: googleBooks },
-        });
-      } else {
-        return res.status(404).json({ message: 'No books found' });
-      }
-    } catch (googleError) {
-      console.error(
-        'Google Books API Error:',
-        googleError.response
-          ? googleError.response.data
-          : googleError.message
-      );
-      return res
-        .status(503)
-        .json({ error: 'Unable to fetch books from external API' });
-    }
-  } catch (error) {
-    next(error);
-  }
-};
+//     if (!doc.exists) {
+//       throw new DatabaseError('create book');
+//     }
+
+//     const book = formatResponseData(doc);
+
+//     res
+//       .status(201)
+//       .json(formatSuccessResponse('Book added successfully', { book }));
+//   } catch (error) {
+//     next(error);
+//   }
+// };
+
+// export const searchBook = async (req, res, next) => {
+//   try {
+//     const { title } = req.query;
+
+//     if (!title) {
+//       return res.status(400).json({ error: 'Book title is required' });
+//     }
+
+//     // Search in your database first
+//     const snapshot = await bookCollection
+//       .where('title', '>=', title)
+//       .where('title', '<=', title + '\uf8ff')
+//       .get();
+
+//     if (!snapshot.empty) {
+//       // Book found in the database
+//       const books = snapshot.docs.map((doc) =>
+//         formatResponseData(doc, 'book')
+//       );
+//       console.log(books);
+//       return res.json({
+//         message: 'Books found in database',
+//         data: { books },
+//       });
+//     }
+//     console.log(process.env.GOOGLE_BOOKS_API_KEY);
+
+//     try {
+//       const googleBooksResponse = await axios.get(
+//         'https://www.googleapis.com/books/v1/volumes',
+//         {
+//           params: {
+//             q: title,
+//             key: process.env.GOOGLE_BOOKS_API_KEY,
+//           },
+//           headers: {
+//             Referer: 'http://localhost:8080/',
+//           },
+//         }
+//       );
+
+//       if (
+//         googleBooksResponse.data.items &&
+//         googleBooksResponse.data.items.length > 0
+//       ) {
+//         console.log(googleBooksResponse.data.items);
+//         const googleBooks = googleBooksResponse.data.items.map((item) => ({
+//           title: item.volumeInfo.title,
+//           authors: item.volumeInfo.authors,
+//           description: item.volumeInfo.description,
+//           genre: item.volumeInfo.genre,
+//           imageLinks: item.volumeInfo.imageLinks,
+//           // Add any other fields you want to include
+//         }));
+//         return res.json({
+//           message: 'Books found in Google Books API',
+//           data: { books: googleBooks },
+//         });
+//       } else {
+//         return res.status(404).json({ message: 'No books found' });
+//       }
+//     } catch (googleError) {
+//       console.error(
+//         'Google Books API Error:',
+//         googleError.response
+//           ? googleError.response.data
+//           : googleError.message
+//       );
+//       return res
+//         .status(503)
+//         .json({ error: 'Unable to fetch books from external API' });
+//     }
+//   } catch (error) {
+//     next(error);
+//   }
+// };
 
 // Update Book
 // export const updateBook = async (req, res, next) => {

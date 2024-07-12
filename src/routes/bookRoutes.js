@@ -1,9 +1,9 @@
 import express from 'express';
 import {
-  createBook,
+  // createBook,
   getBooks,
   getBookById,
-  searchBook,
+  // searchBook,
   // updateBook,
   // deleteBook,
   // getAuthors,
@@ -14,9 +14,9 @@ import {
 
 const router = express.Router();
 
-router.post('/', createBook);
+// router.post('/', createBook);
 router.get('/', getBooks);
-router.get('/search', searchBook);
+// router.get('/search', searchBook);
 // router.get('/authors', getAuthors);
 // router.get('/genres', getGenres);
 // router.get('/author/:author', getBooksByAuthor);

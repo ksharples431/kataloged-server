@@ -1,28 +1,9 @@
 import db from '../config/firebaseConfig.js';
-import firebase from 'firebase-admin';
-import axios from 'axios';
 import { sortBooks } from './utils/bookSorting.js';
 import {
-  ValidationError,
-  DatabaseError,
-} from '../models/httpErrorModel.js';
-import {
-  formatResponseData,
-  formatSuccessResponse,
   getDocumentById,
   validateSortOptions,
-  validateInput,
-} from './utils/helperFunctions.js';
-import {
-  mapAuthorsFromBooks,
-  mapGenresFromBooks,
-  mapAuthorBooks,
-  mapGenreBooks,
-} from './utils/bookMapping.js';
-import {
-  createBookSchema,
-  updateBookSchema,
-} from '../models/bookModel.js';
+} from './utils/bookHelpers.js';
 
 const bookCollection = db.collection('books');
 
@@ -33,7 +14,10 @@ export const getBooks = async (req, res, next) => {
     validateSortOptions(sortBy, order);
 
     const snapshot = await bookCollection.get();
-    let books = snapshot.docs.map((doc) => formatResponseData(doc, 'bid'));
+    let books = snapshot.docs.map((doc) => ({
+      ...doc.data(),
+      bid: doc.id,
+    }));
 
     books = sortBooks(books, sortBy, order);
 
@@ -46,13 +30,18 @@ export const getBooks = async (req, res, next) => {
   }
 };
 
+
 // Get Book by Id
 export const getBookById = async (req, res, next) => {
   try {
     const { bid } = req.params;
     const doc = await getDocumentById(bookCollection, bid, 'Book');
 
-    const book = formatResponseData(doc);
+    const book = {
+      ...doc.data(),
+      bid: doc.id,
+    };
+
     res.status(200).json({
       message: 'Book fetched successfully',
       book,

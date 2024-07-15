@@ -21,6 +21,7 @@ export const googleSignIn = async (req, res, next) => {
     };
 
     const user = await handleUserCreationOrFetch(uid, userData);
+    
     const isNewUser = user.createdAt === user.updatedAt;
 
     res.status(200).json({

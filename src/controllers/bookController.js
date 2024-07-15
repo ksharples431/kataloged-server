@@ -1,25 +1,14 @@
-import db from '../config/firebaseConfig.js';
-import { sortBooks } from './utils/bookSorting.js';
+import { createBookSchema } from '../models/BookModel.js';
 import {
-  getDocumentById,
-  validateSortOptions,
+  fetchBookById,
+  fetchAllBooks,
+  createBookHelper,
 } from './utils/bookHelpers.js';
 
-const bookCollection = db.collection('books');
-
-// Get Books with sorting
 export const getBooks = async (req, res, next) => {
   try {
     const { sortBy = 'title', order = 'asc' } = req.query;
-    validateSortOptions(sortBy, order);
-
-    const snapshot = await bookCollection.get();
-    let books = snapshot.docs.map((doc) => ({
-      ...doc.data(),
-      bid: doc.id,
-    }));
-
-    books = sortBooks(books, sortBy, order);
+    const books = await fetchAllBooks(sortBy, order);
 
     res.status(200).json({
       message: 'Books fetched successfully',
@@ -30,17 +19,10 @@ export const getBooks = async (req, res, next) => {
   }
 };
 
-
-// Get Book by Id
 export const getBookById = async (req, res, next) => {
   try {
     const { bid } = req.params;
-    const doc = await getDocumentById(bookCollection, bid, 'Book');
-
-    const book = {
-      ...doc.data(),
-      bid: doc.id,
-    };
+    const book = await fetchBookById(bid);
 
     res.status(200).json({
       message: 'Book fetched successfully',
@@ -51,41 +33,19 @@ export const getBookById = async (req, res, next) => {
   }
 };
 
-// Create Book
-// export const createBook = async (req, res, next) => {
-//   try {
-//     validateInput(req.body, createBookSchema);
+export const createBook = async (req, res, next) => {
+  try {
+    validateInput(req.body, createBookSchema);
+    const book = await createBookHelper(req.body);
 
-//     const { title, author, ...otherFields } = req.body;
-
-//     if (!title || !author) {
-//       throw new ValidationError('Title and author required');
-//     }
-
-//     const newBook = {
-//       title,
-//       author,
-//       ...otherFields,
-//       createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-//       updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-//     };
-
-//     const docRef = await bookCollection.add(newBook);
-//     const doc = await docRef.get();
-
-//     if (!doc.exists) {
-//       throw new DatabaseError('create book');
-//     }
-
-//     const book = formatResponseData(doc);
-
-//     res
-//       .status(201)
-//       .json(formatSuccessResponse('Book added successfully', { book }));
-//   } catch (error) {
-//     next(error);
-//   }
-// };
+    res.status(201).json({
+      message: 'Book created successfully',
+      book,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
 
 // export const searchBook = async (req, res, next) => {
 //   try {

@@ -1,76 +1,24 @@
-import db, { auth } from '../config/firebaseConfig.js';
-import firebase from 'firebase-admin';
-import { sortBooks } from './utils/bookSorting.js';
-import HttpError, {
-  ValidationError,
-  DatabaseError,
-  NotFoundError,
-} from '../models/httpErrorModel.js';
-import {
-  formatResponseData,
-  formatSuccessResponse,
-  getDocumentById,
-  validateInput,
-  validateSortOptions,
-  getCurrentUserUID,
-  convertFirestoreTimestamp,
-} from './utils/helperFunctions.js';
-import {
-  fetchCombinedBookData,
-  fetchCombinedBooksData,
-} from './utils/combineBookData.js';
 import {
   addUserBookSchema,
-  updateUserBookSchema,
 } from '../models/userBookModel.js';
-
-const userBookCollection = db.collection('userBooks');
+import {
+  validateSortOptions,
+  fetchUserBooks,
+  createUserBookHelper,
+  fetchCombinedUserBookData,
+  fetchCombinedUserBooksData,
+  fetchUserBookById,
+} from './utils/userBookHelpers.js';
 
 // Create User Book
 export const createUserBook = async (req, res, next) => {
   try {
-    validateInput(req.body, addUserBookSchema);
-
-    const { uid, bid, ...otherFields } = req.body;
-
-    const existingBook = await userBookCollection
-      .where('uid', '==', uid)
-      .where('bid', '==', bid)
-      .get();
-
-    if (!existingBook.empty) {
-      return res.status(409).json({
-        success: false,
-        message: "This book already exists in the user's library",
-      });
-    }
-
-    const newUserBook = {
-      uid,
-      bid,
-      ...otherFields,
-      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-    };
-
-    const docRef = await userBookCollection.add(newUserBook);
-    const doc = await docRef.get();
-
-    if (!doc.exists) {
-      throw new DatabaseError('addUserBook');
-    }
-    const userBook = {
-      ...doc.data(),
-      ubid: doc.id,
-      updatedAt: convertFirestoreTimestamp(doc.data().updatedAt),
-    };
-
-    console.log(userBook);
-    res.status(201).json(
-      formatSuccessResponse('Book added to user library successfully', {
-        userBook,
-      })
-    );
+    validateUserBookInput(req.body, addUserBookSchema);
+    const userBook = await createUserBookHelper(req.body);
+    res.status(201).json({
+      message: 'User book created successfully',
+      userBook,
+    });
   } catch (error) {
     next(error);
   }
@@ -79,38 +27,25 @@ export const createUserBook = async (req, res, next) => {
 // Get User Books with sorting
 export const getUserBooks = async (req, res, next) => {
   try {
-    const uid = req.user.uid;
-    console.log(req.user)
+    const { uid } = req.user
     const { sortBy = 'title', order = 'asc' } = req.query;
     validateSortOptions(sortBy, order);
 
-    const snapshot = await userBookCollection
-      .where('uid', '==', uid)
-      .get();
+     const userBooks = await fetchUserBooks(uid, sortBy, order);
 
-    if (snapshot.empty) {
-      return res.status(200).json(
-        formatSuccessResponse('No books found for this user', {
-          userBooks: [],
-        })
-      );
-    }
+     if (userBooks.length === 0) {
+       return res.status(200).json({
+         message: "No books in user's library",
+         userBooks: [],
+       });
+     }
 
-    let userBooksWithFullInfo = await fetchCombinedBooksData(
-      snapshot.docs
-    );
+    const combinedData = await fetchCombinedUserBooksData(userBooks);
 
-    userBooksWithFullInfo = sortBooks(
-      userBooksWithFullInfo,
-      sortBy,
-      order
-    );
-
-    res.status(200).json(
-      formatSuccessResponse('User Books retrieved successfully', {
-        userBooks: userBooksWithFullInfo,
-      })
-    );
+    res.status(200).json({
+      message: 'User books retrieved successfully',
+      userBooks: combinedData,
+    });
   } catch (error) {
     next(error);
   }
@@ -120,23 +55,13 @@ export const getUserBooks = async (req, res, next) => {
 export const getUserBookById = async (req, res, next) => {
   try {
     const { ubid } = req.params;
-    const userBookDoc = await getDocumentById(
-      userBookCollection,
-      ubid,
-      'User Book'
-    );
+    const userBookDoc = await fetchUserBookById(ubid);
+    const combinedData = await fetchCombinedUserBookData(userBookDoc);
 
-    const combinedData = await fetchCombinedBookData(userBookDoc);
-
-    if (!combinedData) {
-      throw new NotFoundError(`Associated book`);
-    }
-
-    res.status(200).json(
-      formatSuccessResponse('User Book retrieved successfully', {
-        userBook: combinedData,
-      })
-    );
+    res.status(200).json({
+      message: 'User book retrieved successfully',
+      userBook: combinedData,
+    });
   } catch (error) {
     next(error);
   }

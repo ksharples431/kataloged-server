@@ -3,6 +3,7 @@ import db from '../../config/firebaseConfig.js';
 import { sortBooks } from './bookSorting.js';
 
 const userBookCollection = db.collection('userBooks');
+const bookCollection = db.collection('books');
 
 export const validateInput = (data, schema) => {
   const { error } = schema.validate(data);
@@ -30,6 +31,17 @@ export const validateSortOptions = (sortBy, order) => {
   }
 };
 
+export const fetchBookById = async (bid) => {
+  const bookDoc = await bookCollection.doc(bid).get();
+  if (!bookDoc.exists) {
+    throw new HttpError('Book not found', 404);
+  }
+  return {
+    bid: bookDoc.id,
+    ...bookDoc.data(),
+  };
+}; 
+
 export const fetchUserBookById = async (ubid) => {
   const userBookDoc = await userBookCollection.doc(ubid).get();
   if (!userBookDoc.exists) {
@@ -54,7 +66,18 @@ export const fetchUserBooks = async (
     ...doc.data(),
     ubid: doc.id,
   }));
-  return sortBooks(userBooks, sortBy, order);
+
+  const combinedUserBooks = await Promise.all(
+    userBooks.map(async (userBook) => {
+      const bookData = await fetchBookById(userBook.bid);
+      return {
+        ...userBook,
+        ...bookData,
+      };
+    })
+  );
+
+  return sortBooks(combinedUserBooks, sortBy, order);
 };
 
 export const createUserBookHelper = async ({
@@ -87,12 +110,8 @@ export const createUserBookHelper = async ({
   return fetchUserBookById(docRef.id);
 };
 
-export const fetchCombinedUserBookData = async (userBookDoc) => {
-  const userBookData = {
-    ubid: userBookDoc.id,
-    ...userBookDoc.data(),
-  };
-  const bookData = await fetchUserBookById(userBookData.bid);
+export const fetchCombinedUserBookData = async (userBookData) => {
+  const bookData = await fetchBookById(userBookData.bid);
 
   return {
     ...userBookData,
@@ -100,6 +119,10 @@ export const fetchCombinedUserBookData = async (userBookDoc) => {
   };
 };
 
-export const fetchCombinedUserBooksData = async (userBookDocs) => {
-  return Promise.all(userBookDocs.map(fetchCombinedUserBookData));
+export const fetchCombinedUserBooksData = async (userBook) => {
+  const bookData = await fetchBookById(userBook.bid);
+  return {
+    ...userBook,
+    ...bookData,
+  };;
 };

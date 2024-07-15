@@ -1,6 +1,5 @@
-import {
-  addUserBookSchema,
-} from '../models/userBookModel.js';
+import HttpError from '../models/httpErrorModel.js';
+import { addUserBookSchema } from '../models/userBookModel.js';
 import {
   validateSortOptions,
   fetchUserBooks,
@@ -27,24 +26,25 @@ export const createUserBook = async (req, res, next) => {
 // Get User Books with sorting
 export const getUserBooks = async (req, res, next) => {
   try {
-    const { uid } = req.user
-    const { sortBy = 'title', order = 'asc' } = req.query;
+    const { uid, sortBy = 'title', order = 'asc' } = req.query;
     validateSortOptions(sortBy, order);
 
-     const userBooks = await fetchUserBooks(uid, sortBy, order);
+    if (!uid) {
+      throw new HttpError('User ID is required', 400);
+    }
 
-     if (userBooks.length === 0) {
-       return res.status(200).json({
-         message: "No books in user's library",
-         userBooks: [],
-       });
-     }
+    const userBooks = await fetchUserBooks(uid, sortBy, order);
 
-    const combinedData = await fetchCombinedUserBooksData(userBooks);
+    if (userBooks.length === 0) {
+      return res.status(200).json({
+        message: "No books in user's library",
+        userBooks: [],
+      });
+    }
 
     res.status(200).json({
       message: 'User books retrieved successfully',
-      userBooks: combinedData,
+      userBooks: userBooks,
     });
   } catch (error) {
     next(error);
@@ -55,8 +55,10 @@ export const getUserBooks = async (req, res, next) => {
 export const getUserBookById = async (req, res, next) => {
   try {
     const { ubid } = req.params;
-    const userBookDoc = await fetchUserBookById(ubid);
-    const combinedData = await fetchCombinedUserBookData(userBookDoc);
+    console.log(ubid);
+
+    const userBook = await fetchUserBookById(ubid);
+    const combinedData = await fetchCombinedUserBookData(userBook);
 
     res.status(200).json({
       message: 'User book retrieved successfully',

@@ -22,12 +22,11 @@ export const fetchUserById = async (uid) => {
 };
 
 export const createUser = async (uid, { username, email }) => {
-  const now = new Date().toISOString();
   const newUser = {
     username,
     email,
-    createdAt: now,
-    updatedAt: now,
+    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
   };
 
   await userCollection.doc(uid).set(newUser);

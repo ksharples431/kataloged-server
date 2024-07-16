@@ -5,7 +5,6 @@ import {
   fetchUserBooks,
   createUserBookHelper,
   fetchCombinedUserBookData,
-  fetchCombinedUserBooksData,
   fetchUserBookById,
 } from './utils/userBookHelpers.js';
 

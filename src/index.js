@@ -3,7 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import addRequestId from 'express-request-id'; 
 import bookRoutes from './routes/bookRoutes.js';
-// import userRoutes from './routes/userRoutes.js';
+import userRoutes from './routes/userRoutes.js';
 import userBookRoutes from './routes/userBookRoutes.js';
 import authRoutes from './routes/authRoutes.js';
 import { notFound, errorHandler } from './middleware/errorMiddleware.js';
@@ -39,7 +39,7 @@ app.use(
 app.options('*', cors());
 
 app.use('/api/books', bookRoutes);
-// app.use('/api/users', userRoutes);
+app.use('/api/users', userRoutes);
 app.use('/api/userBooks', userBookRoutes);
 app.use('/api/auth', authRoutes);
 

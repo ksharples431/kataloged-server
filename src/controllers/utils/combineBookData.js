@@ -5,7 +5,6 @@ const bookCollection = db.collection('books');
 
 export const fetchCombinedBookData = async (userBookDoc) => {
   const userBookData = formatResponseData(userBookDoc, 'ubid');
-  console.log(userBookData)
   const bookDoc = await bookCollection.doc(userBookData.bid).get();
 
   if (!bookDoc.exists) {

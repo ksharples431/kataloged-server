@@ -1,6 +1,7 @@
 import HttpError from '../models/httpErrorModel.js';
 import { addUserBookSchema } from '../models/userBookModel.js';
 import {
+  validateInput,
   validateSortOptions,
   fetchUserBooks,
   createUserBookHelper,
@@ -11,7 +12,7 @@ import {
 // Create User Book
 export const createUserBook = async (req, res, next) => {
   try {
-    validateUserBookInput(req.body, addUserBookSchema);
+    validateInput(req.body, addUserBookSchema);
     const userBook = await createUserBookHelper(req.body);
     res.status(201).json({
       message: 'User book created successfully',
@@ -54,7 +55,6 @@ export const getUserBooks = async (req, res, next) => {
 export const getUserBookById = async (req, res, next) => {
   try {
     const { ubid } = req.params;
-    console.log(ubid);
 
     const userBook = await fetchUserBookById(ubid);
     const combinedData = await fetchCombinedUserBookData(userBook);

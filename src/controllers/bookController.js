@@ -1,6 +1,7 @@
 import { createBookSchema } from '../models/BookModel.js';
 import HttpError from '../models/httpErrorModel.js';
 import {
+  validateInput,
   fetchBookById,
   fetchAllBooks,
   createBookHelper,

@@ -101,8 +101,8 @@ export const createUserBookHelper = async ({
     uid,
     bid,
     ...otherFields,
-    createdAt: db.FieldValue.serverTimestamp(),
-    updatedAt: db.FieldValue.serverTimestamp(),
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
     updatedAtString: new Date().toISOString(),
   };
 

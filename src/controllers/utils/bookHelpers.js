@@ -37,7 +37,7 @@ export const fetchBookById = async (bid) => {
     throw new HttpError('Book not found', 404);
   }
   return {
-    bid: bookDoc.id,
+    bid: bookDoc.bid,
     ...bookDoc.data(),
   };
 };
@@ -63,13 +63,17 @@ export const createBookHelper = async ({
     title,
     author,
     ...otherFields,
-    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-    updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
     updatedAtString: new Date().toISOString(),
   };
-
+  console.log(newBook)
   const docRef = await bookCollection.add(newBook);
-  return fetchBookById(docRef.id);
+  const bid = docRef.id;
+  await docRef.update({ bid });
+  console.log(bid)
+  console.log(docRef)
+  return fetchBookById(bid);
 };
 
 export async function searchBooksInDatabase(searchParams) {
@@ -113,7 +117,7 @@ export async function searchBooksInDatabase(searchParams) {
 
 const generateBid = (item) => {
   const uniqueString = `${item.id}-${item.etag}-${Date.now()}`;
-  return `gbook_${hashSum(uniqueString)}`.substring(0, 28); // 'gbook_' + 22 characters
+  return `${hashSum(uniqueString)}`.substring(0, 28); // 'gbook_' + 22 characters
 };
 
 export const searchBooksInGoogleAPI = async (googleQuery) => {
@@ -158,7 +162,6 @@ export const searchBooksInGoogleAPI = async (googleQuery) => {
         (book) => book.imagePath && book.description
       );
 
-      console.log(filteredBooks);
       return filteredBooks;
     }
 

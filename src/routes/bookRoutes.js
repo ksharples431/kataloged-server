@@ -1,7 +1,7 @@
 import express from 'express';
 import verifyToken from '../middleware/authMiddleware.js';
 import {
-  // createBook,
+  createBook,
   getBooks,
   getBookById,
   searchBook,
@@ -15,7 +15,7 @@ import {
 
 const router = express.Router();
 
-// router.post('/', createBook);
+router.post('/', createBook);
 router.get('/', getBooks);
 router.get('/search', verifyToken, searchBook);
 // router.get('/authors', getAuthors);

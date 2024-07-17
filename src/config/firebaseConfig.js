@@ -64,5 +64,7 @@ initializeFirebaseClient();
 const db = getFirestore();
 const adminAuth = admin.auth()
 
+db.settings({ ignoreUndefinedProperties: true });
+
 export default db;
 export { admin, adminAuth, auth };

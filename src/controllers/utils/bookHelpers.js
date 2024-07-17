@@ -139,22 +139,29 @@ export const searchBooksInGoogleAPI = async (googleQuery) => {
       const mappedBooks = response.data.items.map((item) => ({
         bid: generateBid(item),
         title: item.volumeInfo.title || 'Unknown Title',
-        authors: item.volumeInfo.authors
-          ? item.volumeInfo.authors.join(', ')
-          : 'Unknown',
+        author: item.volumeInfo.authors
+          ? item.volumeInfo.authors[0]
+          : 'Unknown Author',
         description: item.volumeInfo.description || '',
         genre: item.volumeInfo.categories
           ? item.volumeInfo.categories[0]
           : 'Uncategorized',
-        imageLinks: item.volumeInfo.imageLinks || {},
+        imagePath: item.volumeInfo.imageLinks?.thumbnail,
         isbn: item.volumeInfo.industryIdentifiers
           ? item.volumeInfo.industryIdentifiers.find(
               (id) => id.type === 'ISBN_13'
             )?.identifier || 'N/A'
           : 'N/A',
       }));
-      return mappedBooks;
+
+      const filteredBooks = mappedBooks.filter(
+        (book) => book.imagePath && book.description
+      );
+
+      console.log(filteredBooks);
+      return filteredBooks;
     }
+
     return []; // Return an empty array if no books found
   } catch (error) {
     console.error(

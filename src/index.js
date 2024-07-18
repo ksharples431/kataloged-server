@@ -16,6 +16,7 @@ const app = express();
 app.use(addRequestId());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
 app.use(setHeaders);
 
 const allowedOrigins = ['https://kataloged.com', 'http://localhost:5173'];

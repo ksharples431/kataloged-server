@@ -57,11 +57,14 @@ export const fetchAllBooks = async (sortBy = 'title', order = 'asc') => {
 export const createBookHelper = async ({
   title,
   author,
+  imagePath,
   ...otherFields
 }) => {
+  const secureImagePath = imagePath.replace('http://', 'https://');
   const newBook = {
     title,
     author,
+    imagePath: secureImagePath,
     ...otherFields,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),

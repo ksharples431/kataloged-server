@@ -1,4 +1,4 @@
-import { createBookSchema } from '../models/BookModel.js';
+import { createBookSchema } from '../models/bookModel.js';
 import HttpError from '../models/httpErrorModel.js';
 import {
   validateInput,

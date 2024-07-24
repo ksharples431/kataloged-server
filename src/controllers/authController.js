@@ -1,12 +1,12 @@
-import { adminAuth } from '../config/firebaseConfig.js';
 import HttpError from '../models/httpErrorModel.js';
+import { adminAuth } from '../config/firebaseConfig.js';
 import { tokenCache } from '../middleware/authMiddleware.js';
+import { googleSignInSchema, signupSchema } from '../models/authModel.js';
 import {
   validateInput,
-  fetchUserById,
   handleUserCreationOrFetch,
+  fetchUserById,
 } from './utils/authHelpers.js';
-import { googleSignInSchema, signupSchema } from '../models/authModel.js';
 
 export const googleSignIn = async (req, res, next) => {
   try {

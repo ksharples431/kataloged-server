@@ -5,6 +5,6 @@ export const googleSignInSchema = Joi.object({
 });
 
 export const signupSchema = Joi.object({
-  username: Joi.string().min(3).max(30).required(),
+  username: Joi.string().min(3).max(15).required(),
   email: Joi.string().email().required(),
 });

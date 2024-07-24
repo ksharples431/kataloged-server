@@ -1,5 +1,5 @@
 import firebase from 'firebase-admin';
-import db, { auth } from '../../config/firebaseConfig.js';
+import db from '../../config/firebaseConfig.js';
 import HttpError from '../../models/httpErrorModel.js';
 
 const userCollection = db.collection('users');
@@ -10,6 +10,18 @@ export const validateInput = (data, schema) => {
     throw new HttpError(error.details[0].message, 400);
   }
 };
+
+export const handleUserCreationOrFetch = async (uid, userData) => {
+  try {
+    return await fetchUserById(uid);
+  } catch (error) {
+    if (error instanceof HttpError && error.statusCode === 404) {
+      return await createUser(uid, userData);
+    }
+    throw error;
+  }
+};
+
 
 export const fetchUserById = async (uid) => {
   const userDoc = await userCollection.doc(uid).get();
@@ -36,13 +48,3 @@ export const createUser = async (uid, { username, email }) => {
   return fetchUserById(uid);
 };
 
-export const handleUserCreationOrFetch = async (uid, userData) => {
-  try {
-    return await fetchUserById(uid);
-  } catch (error) {
-    if (error instanceof HttpError && error.statusCode === 404) {
-      return await createUser(uid, userData);
-    }
-    throw error;
-  }
-};

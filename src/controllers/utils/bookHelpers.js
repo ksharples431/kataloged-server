@@ -15,23 +15,27 @@ export const validateInput = (data, schema) => {
   }
 };
 
-export const validateSortOptions = (sortBy, order) => {
-  const validSortFields = [
-    'title',
-    'author',
-    'genre',
-    'updatedAt',
-    'bookCount',
-  ];
-  const validOrders = ['asc', 'desc'];
-
-  if (!validSortFields.includes(sortBy)) {
-    throw new HttpError('Invalid sort field', 400);
-  }
-
-  if (!validOrders.includes(order.toLowerCase())) {
-    throw new HttpError('Invalid sort order', 400);
-  }
+export const createBookHelper = async ({
+  title,
+  author,
+  imagePath,
+  ...otherFields
+}) => {
+  const secureImagePath = imagePath.replace('http://', 'https://');
+  const newBook = {
+    title,
+    author,
+    imagePath: secureImagePath,
+    ...otherFields,
+    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    updatedAtString: new Date().toISOString(),
+  };
+  console.log(`${newBook.title} added successfully`);
+  const docRef = await bookCollection.add(newBook);
+  const bid = docRef.id;
+  await docRef.update({ bid });
+  return fetchBookById(bid);
 };
 
 export const fetchBookById = async (bid) => {
@@ -57,28 +61,25 @@ export const fetchAllBooks = async (sortBy = 'title', order = 'asc') => {
   return sortBooks(books, sortBy, order);
 };
 
-export const createBookHelper = async ({
-  title,
-  author,
-  imagePath,
-  ...otherFields
-}) => {
-  const secureImagePath = imagePath.replace('http://', 'https://');
-  const newBook = {
-    title,
-    author,
-    imagePath: secureImagePath,
-    ...otherFields,
-    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-    updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-    updatedAtString: new Date().toISOString(),
-  };
-  console.log(`${newBook.title} added successfully`)
-  const docRef = await bookCollection.add(newBook);
-  const bid = docRef.id;
-  await docRef.update({ bid });
-  return fetchBookById(bid);
+export const validateSortOptions = (sortBy, order) => {
+  const validSortFields = [
+    'title',
+    'author',
+    'genre',
+    'updatedAt',
+    'bookCount',
+  ];
+  const validOrders = ['asc', 'desc'];
+
+  if (!validSortFields.includes(sortBy)) {
+    throw new HttpError('Invalid sort field', 400);
+  }
+
+  if (!validOrders.includes(order.toLowerCase())) {
+    throw new HttpError('Invalid sort order', 400);
+  }
 };
+
 
 export async function searchBooksInDatabase(searchParams) {
   let query = bookCollection;
@@ -119,11 +120,6 @@ export async function searchBooksInDatabase(searchParams) {
   }
 }
 
-const generateBid = (item) => {
-  const uniqueString = `${item.id}-${item.etag}-${Date.now()}`;
-  return `${hashSum(uniqueString)}`.substring(0, 28); 
-};
-
 export const searchBooksInGoogleAPI = async (googleQuery) => {
   try {
     if (!googleQuery) {
@@ -138,7 +134,7 @@ export const searchBooksInGoogleAPI = async (googleQuery) => {
           key: process.env.GOOGLE_BOOKS_API_KEY,
         },
         headers: {
-          Referer: process.env.APP_URL || 'http://localhost:8080/',
+          Referer: process.env.APP_URL_PROD || process.env.APP_URL_LOCAL,
         },
       }
     );
@@ -178,6 +174,12 @@ export const searchBooksInGoogleAPI = async (googleQuery) => {
     throw new HttpError('Unable to fetch books from external API', 503);
   }
 };
+
+const generateBid = (item) => {
+  const uniqueString = `${item.id}-${item.etag}-${Date.now()}`;
+  return `${hashSum(uniqueString)}`.substring(0, 28);
+};
+
 
 export const updateBookHelper = async (bid, updateData) => {
   const bookRef = bookCollection.doc(bid);

@@ -1,21 +1,14 @@
 import Joi from 'joi';
-import firebase from 'firebase-admin';
 
-const FieldValue = firebase.firestore.FieldValue;
-
-const customTimestamp = Joi.extend((joi) => ({
-  type: 'timestamp',
-  base: joi.any().valid(FieldValue.serverTimestamp()),
-  messages: {
-    'timestamp.base':
-      '"{{#label}}" must be a valid date or FieldValue.serverTimestamp()',
-  },
-}));
+const firestoreTimestampSchema = Joi.object({
+  _seconds: Joi.number().integer().required(),
+  _nanoseconds: Joi.number().integer().min(0).max(999999999).required(),
+}).required();
 
 export const createBookSchema = Joi.object({
   author: Joi.string().required(),
   bid: Joi.string().required(),
-  createdAt: customTimestamp.timestamp().required(),
+  createdAt: firestoreTimestampSchema,
   description: Joi.string(),
   genre: Joi.string(),
   imagePath: Joi.string(),
@@ -23,13 +16,14 @@ export const createBookSchema = Joi.object({
   seriesName: Joi.string(),
   seriesNumber: Joi.string(),
   title: Joi.string().required(),
-  updatedAt: customTimestamp.timestamp().required(),
-  updatedAtString: Joi.date().iso().required(),
+  updatedAt: firestoreTimestampSchema,
+  updatedAtString: Joi.date().iso(),
 });
 
 export const updateBookSchema = Joi.object({
   author: Joi.string(),
-  bid: Joi.string().required(),
+  bid: Joi.string(),
+  createdAt: firestoreTimestampSchema,
   description: Joi.string(),
   genre: Joi.string(),
   imagePath: Joi.string(),
@@ -37,6 +31,7 @@ export const updateBookSchema = Joi.object({
   seriesName: Joi.string(),
   seriesNumber: Joi.string(),
   title: Joi.string(),
-  updatedAt: customTimestamp.timestamp().required(),
-  updatedAtString: Joi.date().iso().required(),
+  updatedAt: firestoreTimestampSchema,
+  updatedAt: firestoreTimestampSchema,
+  updatedAtString: Joi.date().iso(),
 });

@@ -1,14 +1,17 @@
-import { createBookSchema } from '../models/bookModel.js';
 import HttpError from '../models/httpErrorModel.js';
+import {
+  createBookSchema,
+  updateBookSchema,
+} from '../models/bookModel.js';
 import {
   validateInput,
   createBookHelper,
   fetchBookById,
   fetchAllBooks,
-  updateBookHelper,
-  deleteBookHelper,
   searchBooksInDatabase,
   searchBooksInGoogleAPI,
+  updateBookHelper,
+  deleteBookHelper,
 } from './utils/bookHelpers.js';
 
 export const createBook = async (req, res, next) => {
@@ -110,6 +113,7 @@ export const searchBook = async (req, res, next) => {
 // Update Book
 export const updateBook = async (req, res, next) => {
   try {
+    console.log(req.body)
     validateInput(req.body, updateBookSchema);
 
     const { bid } = req.params;

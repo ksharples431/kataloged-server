@@ -1,13 +1,15 @@
 import firebase from 'firebase-admin';
 import HttpError from '../models/httpErrorModel.js';
-import { addUserBookSchema } from '../models/userBookModel.js';
+import { addUserBookSchema, updateUserBookSchema } from '../models/userBookModel.js';
 import {
   validateInput,
-  validateSortOptions,
-  fetchUserBooks,
   createUserBookHelper,
-  fetchCombinedUserBookData,
   fetchUserBookById,
+  fetchUserBooks,
+  validateSortOptions,
+  fetchCombinedUserBookData,
+  updateBookHelper,
+  deleteBookHelper,
 } from './utils/userBookHelpers.js';
 
 // Create User Book
@@ -44,7 +46,7 @@ export const getUserBooks = async (req, res, next) => {
     }
 
     res.status(200).json({
-      message: 'User books retrieved successfully',
+      message: 'User books fetched successfully',
       userBooks: userBooks,
     });
   } catch (error) {
@@ -69,62 +71,70 @@ export const getUserBookById = async (req, res, next) => {
   }
 };
 
-// export const updateUserBook = async (req, res, next) => {
-//   try {
-//     validateInput(req.body, updateUserBookSchema);
+export const updateUserBook = async (req, res, next) => {
+  try {
+    validateInput(req.body, updateUserBookSchema);
 
-//     const { id } = req.params;
-//     const doc = await getDocumentById(userBookCollection, id, 'User Book');
+    const { ubid } = req.params;
+    const updateData = req.body;
 
-//     const currentData = doc.data();
-//     const updateData = { ...req.body };
+    // Fetch the current user book data
+    const currentUserBook = await fetchUserBookById(ubid);
 
-//     delete updateData.id;
-//     delete updateData.createdAt;
+    // Fetch the book data
+    const bookData = await fetchBookById(currentUserBook.bid);
 
-//     const hasChanges = Object.entries(updateData).some(
-//       ([key, value]) => currentData[key] !== value
-//     );
+    // Combine the data, prioritizing current userBook data
+    const currentCombinedData = {
+      ...bookData,
+      ...currentUserBook,
+    };
 
-//     if (!hasChanges) {
-//       const userBook = formatResponseData(doc);
-//       return res
-//         .status(200)
-//         .json(formatSuccessResponse('No changes detected', { userBook }));
-//     }
+    // Determine which fields have actually changed
+    const changedFields = Object.entries(updateData).reduce(
+      (acc, [key, value]) => {
+        if (currentCombinedData[key] !== value) {
+          acc[key] = value;
+        }
+        return acc;
+      },
+      {}
+    );
 
-//     updateData.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
-//     await doc.ref.update(updateData);
+    // If no fields have changed, return early
+    if (Object.keys(changedFields).length === 0) {
+      return res.status(200).json({
+        message: 'No changes detected',
+        userBook: currentCombinedData,
+      });
+    }
 
-//     const updatedDoc = await doc.ref.get();
-//     const userBook = formatResponseData(updatedDoc);
+    const updatedUserBook = await updateBookHelper(ubid, changedFields);
 
-//     res.status(200).json(
-//       formatSuccessResponse('User book updated successfully', {
-//         userBook,
-//       })
-//     );
-//   } catch (error) {
-//     next(error);
-//   }
-// };
+    // Fetch the updated combined data
+     const updatedCombinedData = await fetchCombinedUserBookData(
+       updatedUserBook
+     );
 
-// // Delete User Book
-// export const deleteUserBook = async (req, res, next) => {
-//   try {
-//     const { id } = req.params;
-//     const doc = await getDocumentById(userBookCollection, id, 'User Book');
+    res.status(200).json({
+      message: 'User book updated successfully',
+      userBook: updatedCombinedData,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
 
-//     await doc.ref.delete();
-//     res
-//       .status(200)
-//       .json(
-//         formatSuccessResponse(
-//           'Book removed from user library successfully',
-//           null
-//         )
-//       );
-//   } catch (error) {
-//     next(error);
-//   }
-// };
+export const deleteUserBook = async (req, res, next) => {
+  try {
+    const { ubid } = req.params;
+
+    await deleteBookHelper(ubid);
+
+    res.status(200).json({
+      message: 'User book deleted successfully',
+    });
+  } catch (error) {
+    next(error);
+  }
+};

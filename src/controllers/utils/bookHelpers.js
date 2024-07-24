@@ -1,9 +1,12 @@
-import HttpError from '../../models/httpErrorModel.js';
-const bookCollection = db.collection('books');
-import db from '../../config/firebaseConfig.js';
-import { sortBooks } from './bookSorting.js';
 import axios from 'axios';
 import hashSum from 'hash-sum';
+import firebase from 'firebase-admin';
+import db from '../../config/firebaseConfig.js';
+import HttpError from '../../models/httpErrorModel.js';
+import { sortBooks } from './bookSorting.js';
+
+const bookCollection = db.collection('books');
+const userBookCollection = db.collection('userBooks');
 
 export const validateInput = (data, schema) => {
   const { error } = schema.validate(data);
@@ -66,16 +69,14 @@ export const createBookHelper = async ({
     author,
     imagePath: secureImagePath,
     ...otherFields,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
+    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
     updatedAtString: new Date().toISOString(),
   };
-  console.log(newBook)
+  console.log(`${newBook.title} added successfully`)
   const docRef = await bookCollection.add(newBook);
   const bid = docRef.id;
   await docRef.update({ bid });
-  console.log(bid)
-  console.log(docRef)
   return fetchBookById(bid);
 };
 
@@ -120,7 +121,7 @@ export async function searchBooksInDatabase(searchParams) {
 
 const generateBid = (item) => {
   const uniqueString = `${item.id}-${item.etag}-${Date.now()}`;
-  return `${hashSum(uniqueString)}`.substring(0, 28); // 'gbook_' + 22 characters
+  return `${hashSum(uniqueString)}`.substring(0, 28); 
 };
 
 export const searchBooksInGoogleAPI = async (googleQuery) => {
@@ -168,7 +169,7 @@ export const searchBooksInGoogleAPI = async (googleQuery) => {
       return filteredBooks;
     }
 
-    return []; // Return an empty array if no books found
+    return []; 
   } catch (error) {
     console.error(
       'Google Books API Error:',
@@ -176,4 +177,48 @@ export const searchBooksInGoogleAPI = async (googleQuery) => {
     );
     throw new HttpError('Unable to fetch books from external API', 503);
   }
+};
+
+export const updateBookHelper = async (bid, updateData) => {
+  const bookRef = bookCollection.doc(bid);
+  const bookDoc = await bookRef.get();
+
+  if (!bookDoc.exists) {
+    throw new HttpError('Book not found', 404);
+  }
+
+  const updatedBook = {
+    ...bookDoc.data(),
+    ...updateData,
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    updatedAtString: new Date().toISOString(),
+  };
+
+  await bookRef.update(updatedBook);
+  return fetchBookById(bid);
+};
+
+export const deleteBookHelper = async (bid) => {
+  const bookRef = bookCollection.doc(bid);
+  const bookDoc = await bookRef.get();
+
+  if (!bookDoc.exists) {
+    throw new HttpError('Book not found', 404);
+  }
+
+  const batch = bookCollection.firestore.batch();
+
+  // Delete the book from the books collection
+  batch.delete(bookRef);
+
+  // Search and delete user books referencing the bid
+  const userBooksSnapshot = await userBookCollection
+    .where('bid', '==', bid)
+    .get();
+  userBooksSnapshot.forEach((doc) => {
+    batch.delete(doc.ref);
+  });
+
+  // Commit the batch
+  await batch.commit();
 };

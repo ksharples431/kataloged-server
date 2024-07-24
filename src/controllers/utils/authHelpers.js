@@ -1,3 +1,4 @@
+import firebase from 'firebase-admin';
 import db, { auth } from '../../config/firebaseConfig.js';
 import HttpError from '../../models/httpErrorModel.js';
 
@@ -27,6 +28,7 @@ export const createUser = async (uid, { username, email }) => {
     email,
     createdAt: firebase.firestore.FieldValue.serverTimestamp(),
     updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    updatedAtString: new Date().toISOString(),
   };
 
   await userCollection.doc(uid).set(newUser);

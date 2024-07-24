@@ -1,3 +1,4 @@
+import firebase from 'firebase-admin';
 import HttpError from '../../models/httpErrorModel.js';
 import db from '../../config/firebaseConfig.js';
 import { sortBooks } from './bookSorting.js';
@@ -40,7 +41,7 @@ export const fetchBookById = async (bid) => {
     bid: bookDoc.id,
     ...bookDoc.data(),
   };
-}; 
+};
 
 export const fetchUserBookById = async (ubid) => {
   const userBookDoc = await userBookCollection.doc(ubid).get();
@@ -61,7 +62,7 @@ export const fetchUserBooks = async (
   validateSortOptions(sortBy, order);
 
   const snapshot = await userBookCollection.where('uid', '==', uid).get();
-  
+
   let userBooks = snapshot.docs.map((doc) => ({
     ...doc.data(),
     ubid: doc.id,
@@ -101,8 +102,8 @@ export const createUserBookHelper = async ({
     uid,
     bid,
     ...otherFields,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
+    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
     updatedAtString: new Date().toISOString(),
   };
 
@@ -124,5 +125,5 @@ export const fetchCombinedUserBooksData = async (userBook) => {
   return {
     ...userBook,
     ...bookData,
-  };;
+  };
 };

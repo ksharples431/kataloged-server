@@ -1,29 +1,34 @@
 import express from 'express';
 import verifyToken from '../middleware/authMiddleware.js';
 import {
-  createBook,
   getBooks,
   getBookById,
+  createBook,
+  updateBook,
+  deleteBook,
   searchBook,
-  // updateBook,
-  // deleteBook,
-  // getAuthors,
-  // getGenres,
-  // getBooksByAuthor,
-  // getBooksByGenre,
+  getAuthors,
+  getGenres,
+  getBooksByAuthor,
+  getBooksByGenre,
 } from '../controllers/bookController.js';
 
 const router = express.Router();
 
-router.post('/', createBook);
-router.get('/', getBooks);
-router.get('/search', verifyToken, searchBook);
-// router.get('/authors', getAuthors);
-// router.get('/genres', getGenres);
-// router.get('/author/:author', getBooksByAuthor);
-// router.get('/genre/:genre', getBooksByGenre);
-router.get('/:bid', getBookById);
-// router.put('/:bid', updateBook);
-// router.delete('/:bid', deleteBook);
+// Book routes
+router.post('/books', verifyToken, createBook);
+router.get('/books', getBooks);
+router.get('/books/:bid', getBookById);
+router.put('/books/:bid', verifyToken, updateBook);
+router.delete('/books/:bid', verifyToken, deleteBook);
+router.get('/books/search', searchBook);
+
+// Author routes
+router.get('/authors', getAuthors);
+router.get('/authors/:author/books', getBooksByAuthor);
+
+// Genre routes
+router.get('/genres', getGenres);
+router.get('/genres/:genre/books', getBooksByGenre);
 
 export default router;

@@ -8,14 +8,6 @@ export const getLastName = (name) => {
   return nameArray[nameArray.length - 1];
 };
 
-export const convertFirestoreTimestamp = (timestamp) => {
-  if (!timestamp || !timestamp.toDate) {
-    return timestamp;
-  }
-  const date = timestamp.toDate();
-  return date.toISOString();
-};
-
 export const sortBooks = (books, sortBy, order) => {
   const compareFunction = (a, b) => {
     let comparison = 0;
@@ -32,8 +24,8 @@ export const sortBooks = (books, sortBy, order) => {
         comparison = aLastName.localeCompare(bLastName);
         break;
       case 'updatedAt':
-        const dateA = new Date(convertFirestoreTimestamp(a.updatedAt));
-        const dateB = new Date(convertFirestoreTimestamp(b.updatedAt));
+        const dateA = a.updatedAtString;
+        const dateB = b.updatedAtString;
         if (!isNaN(dateA) && !isNaN(dateB)) {
           comparison = dateA - dateB;
         }

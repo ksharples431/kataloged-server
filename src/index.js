@@ -39,7 +39,7 @@ app.use(
 // Enable pre-flight requests for all routes
 app.options('*', cors());
 
-app.use('/api/books', bookRoutes);
+app.use('/api', bookRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/userBooks', userBookRoutes);
 app.use('/api/auth', authRoutes);

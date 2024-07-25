@@ -1,15 +1,24 @@
 import express from 'express';
-import verifyToken from '../middleware/authMiddleware.js';
 import {
+  getAllUsers,
   getUserById,
-  // updateUser,
-  // deleteUser,
+  updateUser,
+  deleteUser,
 } from '../controllers/userController.js';
+import verifyToken from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
-router.get('/:uid', verifyToken, getUserById);
-// router.patch('/:uid', updateUser);
-// router.delete('/:uid', deleteUser);
+// Get all users
+router.get('/users', verifyToken, getAllUsers);
+
+// Get user by ID
+router.get('/users/:uid', verifyToken, getUserById);
+
+// Update user
+router.put('/users/:uid', verifyToken, updateUser);
+
+// Delete user
+router.delete('/users/:uid', verifyToken, deleteUser);
 
 export default router;

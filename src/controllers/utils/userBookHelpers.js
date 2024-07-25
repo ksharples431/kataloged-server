@@ -149,3 +149,85 @@ export const deleteBookHelper = async (ubid) => {
   await userBookRef.delete();
   // return userBook;
 };
+
+export const mapAuthorsFromUserBooks = async (uid) => {
+  const snapshot = await userBookCollection.where('uid', '==', uid).get();
+  const authorMap = new Map();
+
+  for (const doc of snapshot.docs) {
+    const userBook = doc.data();
+    const book = await bookCollection.doc(userBook.bid).get();
+    const bookData = book.data();
+
+    if (bookData.author) {
+      if (authorMap.has(bookData.author)) {
+        authorMap.set(bookData.author, authorMap.get(bookData.author) + 1);
+      } else {
+        authorMap.set(bookData.author, 1);
+      }
+    }
+  }
+
+  return Array.from(authorMap, ([author, bookCount]) => ({
+    author,
+    bookCount,
+  }));
+};
+
+export const mapGenresFromUserBooks = async (uid) => {
+  const snapshot = await userBookCollection.where('uid', '==', uid).get();
+  const genreMap = new Map();
+
+  for (const doc of snapshot.docs) {
+    const userBook = doc.data();
+    const book = await bookCollection.doc(userBook.bid).get();
+    const bookData = book.data();
+
+    if (bookData.genre) {
+      if (genreMap.has(bookData.genre)) {
+        genreMap.set(bookData.genre, genreMap.get(bookData.genre) + 1);
+      } else {
+        genreMap.set(bookData.genre, 1);
+      }
+    }
+  }
+
+  return Array.from(genreMap, ([genre, bookCount]) => ({
+    genre,
+    bookCount,
+  }));
+};
+
+export const mapUserBooksByAuthor = async (uid, author) => {
+  const snapshot = await userBookCollection.where('uid', '==', uid).get();
+  const authorBooks = [];
+
+  for (const doc of snapshot.docs) {
+    const userBook = doc.data();
+    const book = await bookCollection.doc(userBook.bid).get();
+    const bookData = book.data();
+
+    if (bookData.author === author) {
+      authorBooks.push({ ...bookData, ...userBook, ubid: doc.id });
+    }
+  }
+
+  return authorBooks;
+};
+
+export const mapUserBooksByGenre = async (uid, genre) => {
+  const snapshot = await userBookCollection.where('uid', '==', uid).get();
+  const genreBooks = [];
+
+  for (const doc of snapshot.docs) {
+    const userBook = doc.data();
+    const book = await bookCollection.doc(userBook.bid).get();
+    const bookData = book.data();
+
+    if (bookData.genre === genre) {
+      genreBooks.push({ ...bookData, ...userBook, ubid: doc.id });
+    }
+  }
+
+  return genreBooks;
+};

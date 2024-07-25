@@ -40,9 +40,9 @@ app.use(
 app.options('*', cors());
 
 app.use('/api', bookRoutes);
-app.use('/api/users', userRoutes);
-app.use('/api/userBooks', userBookRoutes);
-app.use('/api/auth', authRoutes);
+app.use('/api', userRoutes);
+app.use('/api', userBookRoutes);
+app.use('/api', authRoutes);
 
 
 

@@ -1,71 +1,98 @@
-import db, { admin } from '../config/firebaseConfig.js';
-import HttpError, { DatabaseError } from '../models/httpErrorModel.js';
-import {
-  fetchUserById
-} from './utils/userHelpers.js';
+import HttpError from '../models/httpErrorModel.js';
+import db from '../config/firebaseConfig.js';
+import firebase from 'firebase-admin';
 
-export const getUserById = async (req, res, next) => {
+const userCollection = db.collection('users');
+
+export const getAllUsers = async (req, res, next) => {
   try {
-    const { uid } = req.params;
-    const user = await fetchUserById(uid);
+    const snapshot = await userCollection.get();
+    const users = snapshot.docs.map((doc) => ({
+      uid: doc.id,
+      ...doc.data(),
+    }));
 
     res.status(200).json({
-      message: 'User fetched successfully',
-      user,
+      message: 'Users fetched successfully',
+      users,
     });
   } catch (error) {
-    next(error);
+    next(
+      new HttpError('Fetching users failed, please try again later.', 500)
+    );
   }
 };
 
-// export const updateUser = async (req, res, next) => {
-//   try {
-//     validateInput(req.body, updateUserSchema);
+export const getUserById = async (req, res, next) => {
+  const { uid } = req.params;
+  try {
+    const userDoc = await userCollection.doc(uid).get();
+    if (!userDoc.exists) {
+      return next(new HttpError('User not found.', 404));
+    }
+    const userData = userDoc.data();
+    res.status(200).json({
+      message: 'User fetched successfully',
+      user: { uid: userDoc.id, ...userData },
+    });
+  } catch (error) {
+    next(
+      new HttpError('Fetching user failed, please try again later.', 500)
+    );
+  }
+};
 
-//     const { uid } = req.params;
-//     const doc = await getDocumentById(userCollection, uid, 'User');
+export const updateUser = async (req, res, next) => {
+  const { uid } = req.params;
+  const updateData = req.body;
 
-//     const currentData = doc.data();
-//     const updateData = { ...req.body };
+  try {
+    const userRef = userCollection.doc(uid);
+    const userDoc = await userRef.get();
 
-//     delete updateData.id;
-//     delete updateData.createdAt;
+    if (!userDoc.exists) {
+      return next(new HttpError('User not found.', 404));
+    }
 
-//     const hasChanges = Object.entries(updateData).some(
-//       ([key, value]) => currentData[key] !== value
-//     );
+    await userRef.update({
+      ...updateData,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      updatedAtString: new Date().toISOString(),
+    });
 
-//     if (!hasChanges) {
-//       const user = formatResponseData(doc);
-//       return res
-//         .status(200)
-//         .json(formatSuccessResponse('No changes detected', { user }));
-//     }
+    const updatedUserDoc = await userRef.get();
+    const updatedUserData = updatedUserDoc.data();
 
-//     updateData.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
-//     await doc.ref.update(updateData);
+    res.status(200).json({
+      message: 'User updated successfully',
+      user: { uid: updatedUserDoc.id, ...updatedUserData },
+    });
+  } catch (error) {
+    next(
+      new HttpError('Updating user failed, please try again later.', 500)
+    );
+  }
+};
 
-//     const updatedDoc = await doc.ref.get();
+export const deleteUser = async (req, res, next) => {
+  const { uid } = req.params;
 
-//     const user = formatResponseData(updatedDoc);
-//     res
-//       .status(200)
-//       .json(formatSuccessResponse('User updated successfully', { user }));
-//   } catch (error) {
-//     next(error);
-//   }
-// };
+  try {
+    const userRef = userCollection.doc(uid);
+    const userDoc = await userRef.get();
 
-// export const deleteUser = async (req, res, next) => {
-//   try {
-//     const { uid } = req.params;
-//     const doc = await getDocumentById(userCollection, uid, 'User');
+    if (!userDoc.exists) {
+      return next(new HttpError('User not found.', 404));
+    }
 
-//     await doc.ref.delete();
-//     res
-//       .status(200)
-//       .json(formatSuccessResponse('User deleted successfully', null));
-//   } catch (error) {
-//     next(error);
-//   }
-// };
+    await userRef.delete();
+
+    res.status(200).json({
+      message: 'User deleted successfully',
+    });
+  } catch (error) {
+    next(
+      new HttpError('Deleting user failed, please try again later.', 500)
+    );
+  }
+};

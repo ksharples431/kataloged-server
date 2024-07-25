@@ -12,8 +12,13 @@ import {
   searchBooksInGoogleAPI,
   updateBookHelper,
   deleteBookHelper,
+  mapAuthorsFromBooks,
+  mapGenresFromBooks,
+  mapAuthorBooks,
+  mapGenreBooks,
 } from './utils/bookHelpers.js';
 
+// Create Book
 export const createBook = async (req, res, next) => {
   try {
     validateInput(req.body, createBookSchema);
@@ -28,6 +33,7 @@ export const createBook = async (req, res, next) => {
   }
 };
 
+// Get Books with sorting
 export const getBooks = async (req, res, next) => {
   try {
     const { sortBy = 'title', order = 'asc' } = req.query;
@@ -42,6 +48,7 @@ export const getBooks = async (req, res, next) => {
   }
 };
 
+// Get Book by Id
 export const getBookById = async (req, res, next) => {
   try {
     const { bid } = req.params;
@@ -56,6 +63,7 @@ export const getBookById = async (req, res, next) => {
   }
 };
 
+// Search Books in DB and API
 export const searchBook = async (req, res, next) => {
   try {
     const { title, author, isbn } = req.query;

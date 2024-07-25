@@ -6,6 +6,7 @@ import {
   createUserBookHelper,
   fetchUserBookById,
   fetchUserBooks,
+  fetchBookById,
   validateSortOptions,
   fetchCombinedUserBookData,
   updateBookHelper,
@@ -15,6 +16,7 @@ import {
   mapUserBooksByAuthor,
   mapUserBooksByGenre,
 } from './utils/userBookHelpers.js';
+import { sortBooks } from './utils/bookSorting.js';
 
 // Create User Book
 export const createUserBook = async (req, res, next) => {
@@ -150,11 +152,13 @@ export const getUserAuthors = async (req, res, next) => {
   try {
     const { uid } = req.params;
     const { sortBy = 'author', order = 'asc' } = req.query;
+    console.log(`Fetching authors for user: ${uid}`);
 
     validateSortOptions(sortBy, order);
 
     let authors = await mapAuthorsFromUserBooks(uid);
     authors = sortBooks(authors, sortBy, order);
+    console.log(authors)
 
     res.status(200).json({
       message: 'User authors fetched successfully',

@@ -12,11 +12,14 @@ import {
   searchBooksInGoogleAPI,
   updateBookHelper,
   deleteBookHelper,
+  validateSortOptions,
   mapAuthorsFromBooks,
   mapGenresFromBooks,
   mapAuthorBooks,
   mapGenreBooks,
 } from './utils/bookHelpers.js';
+import { sortBooks } from './utils/bookSorting.js';
+
 
 // Create Book
 export const createBook = async (req, res, next) => {
@@ -166,6 +169,7 @@ export const getAuthors = async (req, res, next) => {
 
     let authors = await mapAuthorsFromBooks();
     authors = sortBooks(authors, sortBy, order);
+    console.log(authors)
 
     res.status(200).json({
       message: 'Authors fetched successfully',

@@ -3,7 +3,7 @@ import Joi from 'joi';
 const firestoreTimestampSchema = Joi.object({
   _seconds: Joi.number().integer().required(),
   _nanoseconds: Joi.number().integer().min(0).max(999999999).required(),
-}).required();
+})
 
 
 export const addUserBookSchema = Joi.object({

@@ -18,10 +18,10 @@ const router = express.Router();
 // Book routes
 router.post('/books', verifyToken, createBook);
 router.get('/books', getBooks);
+router.get('/books/search', searchBook);
 router.get('/books/:bid', getBookById);
 router.put('/books/:bid', verifyToken, updateBook);
 router.delete('/books/:bid', verifyToken, deleteBook);
-router.get('/books/search', searchBook);
 
 // Author routes
 router.get('/authors', getAuthors);

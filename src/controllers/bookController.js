@@ -69,44 +69,49 @@ export const searchBook = async (req, res, next) => {
 
     const searchParams = { title, author, isbn };
 
-    // Search in your database first
+    console.log('Search parameters:', searchParams);
+
+    // Search in database first
     let books = await searchBooksInDatabase(searchParams);
 
     if (books.length > 0) {
-      res.status(200).json({
+      return res.status(200).json({
         message: 'Books found in database',
         books,
       });
-    } else {
-  
-      // Google Books API query string
-      let googleQuery = '';
-      if (isbn) {
-        googleQuery = `isbn:${isbn}`;
-      } else if (title && author) {
-        googleQuery = `intitle:${title}+inauthor:${author}`;
-      } else if (title) {
-        googleQuery = `intitle:${title}`;
-      } else if (author) {
-        googleQuery = `inauthor:${author}`;
-      }
-
-      books = await searchBooksInGoogleAPI(googleQuery);
-
-      if (books.length > 0) {
-        res.status(200).json({
-          message: 'Books found in Google Books API',
-          books,
-        });
-      } else {
-        res.status(200).json({
-          message: 'No books found',
-          books: [],
-        });
-      }
     }
+
+    // If no books in database, search Google Books 
+    let googleQuery = '';
+    if (isbn) {
+      googleQuery = `isbn:${isbn}`;
+    } else if (title && author) {
+      googleQuery = `intitle:${title}+inauthor:${author}`;
+    } else if (title) {
+      googleQuery = `intitle:${title}`;
+    } else if (author) {
+      googleQuery = `inauthor:${author}`;
+    }
+
+    console.log('Google API query:', googleQuery);
+
+    books = await searchBooksInGoogleAPI(googleQuery);
+
+    res.status(200).json({
+      message:
+        books.length > 0
+          ? 'Books found in Google Books API'
+          : 'No books found',
+      books,
+    });
   } catch (error) {
-    next(error);
+    if (error instanceof HttpError) {
+      next(error);
+    } else {
+      next(
+        new HttpError('An error occurred while searching for books', 500)
+      );
+    }
   }
 };
 

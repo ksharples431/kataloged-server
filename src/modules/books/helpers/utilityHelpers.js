@@ -2,23 +2,24 @@ import hashSum from 'hash-sum';
 
 export const formatBookCoverResponse = (book) => {
   return {
-    bid: book.bid,
-    title: book.title,
     author: book.author,
+    bid: book.bid,
     imagePath: book.imagePath,
+    title: book.title,
   };
 };
 
 export const formatBookDetailsResponse = (book) => {
   return {
     author: book.author,
-    title: book.title,
+    bid: book.bid,
     description: book.description,
     genre: book.genre,
     imagePath: book.imagePath,
     isbn: book.isbn,
     seriesName: book.seriesName,
     seriesNumber: book.seriesNumber,
+    title: book.title,
   };
 };
 

@@ -35,7 +35,6 @@ export const getUserBookById = async (req, res, next) => {
 export const getUserBooks = async (req, res, next) => {
   try {
     const { uid, sortBy = 'title', order = 'asc' } = req.query;
-    console.log(req.query.uid)
     validateSortOptions(sortBy, order);
 
     if (!uid) {

@@ -6,7 +6,6 @@ export const getAuthors = async (req, res, next) => {
 
     let authors = await mapAuthorsFromBooks();
     authors = sortBooks(authors, sortBy, order);
-    console.log(authors);
 
     res.status(200).json({
       message: 'Authors fetched successfully',

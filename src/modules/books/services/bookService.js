@@ -55,7 +55,6 @@ export const createBookHelper = async ({
       updatedAtString: new Date().toISOString(),
       ...otherFields,
     });
-    console.log(`${newBook.title} added successfully`);
     const docRef = await bookCollection.add(newBook);
     const bid = docRef.id;
     await docRef.update({ bid });

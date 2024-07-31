@@ -23,7 +23,7 @@ import {
 export const getBookById = async (req, res, next) => {
   try {
     const { bid } = req.params;
-    const book = await fetchBookById(bid);
+    let book = await fetchBookById(bid);
 
     book = formatBookDetailsResponse(book);
 

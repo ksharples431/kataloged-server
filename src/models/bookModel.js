@@ -1,37 +1,35 @@
 import Joi from 'joi';
 
-const firestoreTimestampSchema = Joi.object({
-  _seconds: Joi.number().integer().required(),
-  _nanoseconds: Joi.number().integer().min(0).max(999999999).required(),
-})
-
 export const createBookSchema = Joi.object({
   author: Joi.string().required(),
-  bid: Joi.string().required(),
-  createdAt: firestoreTimestampSchema,
+  title: Joi.string().required(),
   description: Joi.string(),
   genre: Joi.string(),
   imagePath: Joi.string(),
   isbn: Joi.string(),
+  lowercaseAuthor: Joi.string(),
+  lowercaseTitle: Joi.string(),
   seriesName: Joi.string(),
   seriesNumber: Joi.string(),
-  title: Joi.string().required(),
-  updatedAt: firestoreTimestampSchema,
   updatedAtString: Joi.date().iso(),
+  
+  bid: Joi.string().forbidden(),
+  id: Joi.string(),
 });
 
 export const updateBookSchema = Joi.object({
   author: Joi.string(),
-  bid: Joi.string(),
-  createdAt: firestoreTimestampSchema,
+  title: Joi.string(),
   description: Joi.string(),
   genre: Joi.string(),
   imagePath: Joi.string(),
   isbn: Joi.string(),
+  lowercaseAuthor: Joi.string(), 
+  lowercaseTitle: Joi.string(),
   seriesName: Joi.string(),
   seriesNumber: Joi.string(),
-  title: Joi.string(),
-  updatedAt: firestoreTimestampSchema,
-  updatedAt: firestoreTimestampSchema,
   updatedAtString: Joi.date().iso(),
+
+  bid: Joi.string().forbidden(),
+  id: Joi.string(),
 });

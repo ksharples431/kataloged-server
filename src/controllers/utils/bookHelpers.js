@@ -1,6 +1,5 @@
 import axios from 'axios';
 import hashSum from 'hash-sum';
-import firebase from 'firebase-admin';
 import db from '../../config/firebaseConfig.js';
 import HttpError from '../../models/httpErrorModel.js';
 import { sortBooks } from './bookSorting.js';
@@ -9,10 +8,25 @@ const bookCollection = db.collection('books');
 const userBookCollection = db.collection('userBooks');
 
 export const validateInput = (data, schema) => {
-  const { error } = schema.validate(data);
-  if (error) {
-    throw new HttpError(error.details[0].message, 400);
+  try {
+    const { error } = schema.validate(data);
+    if (error) {
+      throw new HttpError(error.details[0].message, 400);
+    }
+  } catch (error) {
+    if (error instanceof HttpError) {
+      throw error;
+    }
+    throw new HttpError('Validation error', 400);
   }
+};
+
+export const generateLowercaseFields = (book) => {
+  return {
+    ...book,
+    lowercaseTitle: book.title ? book.title.toLowerCase() : '',
+    lowercaseAuthor: book.author ? book.author.toLowerCase() : '',
+  };
 };
 
 export const createBookHelper = async ({
@@ -21,44 +35,57 @@ export const createBookHelper = async ({
   imagePath,
   ...otherFields
 }) => {
-  const secureImagePath = imagePath.replace('http://', 'https://');
-  const newBook = {
-    title,
-    author,
-    imagePath: secureImagePath,
-    ...otherFields,
-    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-    updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-    updatedAtString: new Date().toISOString(),
-  };
-  console.log(`${newBook.title} added successfully`);
-  const docRef = await bookCollection.add(newBook);
-  const bid = docRef.id;
-  await docRef.update({ bid });
-  return fetchBookById(bid);
+  try {
+    const secureImagePath = imagePath.replace('http://', 'https://');
+    const newBook = generateLowercaseFields({
+      title,
+      author,
+      imagePath: secureImagePath,
+      updatedAtString: new Date().toISOString(),
+      ...otherFields,
+    });
+    console.log(`${newBook.title} added successfully`);
+    const docRef = await bookCollection.add(newBook);
+    const bid = docRef.id;
+    await docRef.update({ bid });
+    return fetchBookById(bid);
+  } catch (error) {
+    console.error('Error creating book:', error);
+    throw new HttpError('Failed to create book', 500);
+  }
 };
 
 export const fetchBookById = async (bid) => {
-  const bookDoc = await bookCollection.doc(bid).get();
-  if (!bookDoc.exists) {
-    throw new HttpError('Book not found', 404);
+  try {
+    const bookDoc = await bookCollection.doc(bid).get();
+    if (!bookDoc.exists) {
+      throw new HttpError('Book not found', 404);
+    }
+    return bookDoc.data();
+  } catch (error) {
+    if (error instanceof HttpError) {
+      throw error;
+    }
+    console.error('Error fetching book:', error);
+    throw new HttpError('Failed to fetch book', 500);
   }
-  return {
-    bid: bookDoc.bid,
-    ...bookDoc.data(),
-  };
 };
 
 export const fetchAllBooks = async (sortBy = 'title', order = 'asc') => {
-  validateSortOptions(sortBy, order);
+  try {
+    validateSortOptions(sortBy, order);
 
-  const snapshot = await bookCollection.get();
-  let books = snapshot.docs.map((doc) => ({
-    ...doc.data(),
-    bid: doc.id,
-  }));
+    const snapshot = await bookCollection.get();
+    let books = snapshot.docs.map((doc) => doc.data());
 
-  return sortBooks(books, sortBy, order);
+    return sortBooks(books, sortBy, order);
+  } catch (error) {
+    if (error instanceof HttpError) {
+      throw error;
+    }
+    console.error('Error fetching all books:', error);
+    throw new HttpError('Failed to fetch books', 500);
+  }
 };
 
 export const validateSortOptions = (sortBy, order) => {
@@ -80,40 +107,98 @@ export const validateSortOptions = (sortBy, order) => {
   }
 };
 
+export const updateBookHelper = async (bid, updateData) => {
+  try {
+    const bookRef = bookCollection.doc(bid);
+    const bookDoc = await bookRef.get();
+
+    if (!bookDoc.exists) {
+      throw new HttpError('Book not found', 404);
+    }
+
+    const updatedBook = generateLowercaseFields({
+      ...bookDoc.data(),
+      ...updateData,
+      updatedAtString: new Date().toISOString(),
+    });
+
+    await bookRef.update(updatedBook);
+    return fetchBookById(bid);
+  } catch (error) {
+    if (error instanceof HttpError) {
+      throw error;
+    }
+    console.error('Error updating book:', error);
+    throw new HttpError('Failed to update book', 500);
+  }
+};
+
+export const deleteBookHelper = async (bid) => {
+  try {
+    const bookRef = bookCollection.doc(bid);
+    const bookDoc = await bookRef.get();
+
+    if (!bookDoc.exists) {
+      throw new HttpError('Book not found', 404);
+    }
+
+    const batch = bookCollection.firestore.batch();
+
+    // Delete the book from the books collection
+    batch.delete(bookRef);
+
+    // Search and delete user books referencing the bid
+    const userBooksSnapshot = await userBookCollection
+      .where('bid', '==', bid)
+      .get();
+    userBooksSnapshot.forEach((doc) => {
+      batch.delete(doc.ref);
+    });
+
+    // Commit the batch
+    await batch.commit();
+  } catch (error) {
+    console.error('Error deleting book:', error);
+    throw new HttpError('Failed to delete book', 500);
+  }
+};
 
 export async function searchBooksInDatabase(searchParams) {
+  if (!searchParams.isbn && !searchParams.title && !searchParams.author) {
+    throw new HttpError('At least one search parameter is required', 400);
+  }
+
   let query = bookCollection;
 
   if (searchParams.isbn) {
-    // Search by ISBN
     query = query.where('isbn', '==', searchParams.isbn);
-  } else if (searchParams.title && searchParams.author) {
-    // Search by title and author
-    query = query
-      .where('title', '>=', searchParams.title)
-      .where('title', '<=', searchParams.title + '\uf8ff')
-      .where('author', '>=', searchParams.author)
-      .where('author', '<=', searchParams.author + '\uf8ff');
-  } else if (searchParams.title) {
-    // Search by title only
-    query = query
-      .where('title', '>=', searchParams.title)
-      .where('title', '<=', searchParams.title + '\uf8ff');
-  } else if (searchParams.author) {
-    // Search by author only
-    query = query
-      .where('author', '>=', searchParams.author)
-      .where('author', '<=', searchParams.author + '\uf8ff');
   } else {
-    throw new HttpError('Invalid search parameters', 400);
+    if (searchParams.title && searchParams.author) {
+      const titleLower = searchParams.title.toLowerCase();
+      const authorLower = searchParams.author.toLowerCase();
+      query = query
+        .where('lowercaseTitle', '>=', titleLower)
+        .where('lowercaseTitle', '<', titleLower + '\uf8ff')
+        .where('lowercaseAuthor', '>=', authorLower)
+        .where('lowercaseAuthor', '<', authorLower + '\uf8ff');
+    } else if (searchParams.title) {
+      const titleLower = searchParams.title.toLowerCase();
+      query = query
+        .where('lowercaseTitle', '>=', titleLower)
+        .where('lowercaseTitle', '<', titleLower + '\uf8ff');
+    } else if (searchParams.author) {
+      const authorLower = searchParams.author.toLowerCase();
+      query = query
+        .where('lowercaseAuthor', '>=', authorLower)
+        .where('lowercaseAuthor', '<', authorLower + '\uf8ff');
+    }
   }
 
   try {
     const snapshot = await query.get();
-    return snapshot.docs.map((doc) => ({
-      bid: doc.id,
-      ...doc.data(),
-    }));
+    let books = snapshot.docs.map((doc) => doc.data());
+
+    return books
   } catch (error) {
     console.error('Error searching books in database:', error);
     throw new HttpError('Error searching books in database', 500);
@@ -121,108 +206,63 @@ export async function searchBooksInDatabase(searchParams) {
 }
 
 export const searchBooksInGoogleAPI = async (googleQuery) => {
+  const GOOGLE_BOOKS_API_URL =
+    'https://www.googleapis.com/books/v1/volumes';
+    
+  if (!googleQuery) {
+    throw new HttpError('Invalid search criteria', 400);
+  }
+
   try {
-    if (!googleQuery) {
-      throw new HttpError('Invalid search criteria', 400);
+    const response = await axios.get(GOOGLE_BOOKS_API_URL, {
+      params: {
+        q: googleQuery,
+        key: process.env.GOOGLE_BOOKS_API_KEY,
+      },
+      headers: {
+        Referer: process.env.APP_URL_PROD || process.env.APP_URL_LOCAL,
+      },
+    });
+
+    if (!response.data.items || response.data.items.length === 0) {
+      return [];
     }
 
-    const response = await axios.get(
-      'https://www.googleapis.com/books/v1/volumes',
-      {
-        params: {
-          q: googleQuery,
-          key: process.env.GOOGLE_BOOKS_API_KEY,
-        },
-        headers: {
-          Referer: process.env.APP_URL_PROD || process.env.APP_URL_LOCAL,
-        },
-      }
-    );
-
-    if (response.data.items && response.data.items.length > 0) {
-      const mappedBooks = response.data.items.map((item) => ({
-        bid: generateBid(item),
-        title: item.volumeInfo.title || 'Unknown Title',
-        author: item.volumeInfo.authors
-          ? item.volumeInfo.authors[0]
-          : 'Unknown Author',
-        description: item.volumeInfo.description || '',
-        genre: item.volumeInfo.categories
-          ? item.volumeInfo.categories[0]
-          : 'Uncategorized',
-        imagePath: item.volumeInfo.imageLinks?.thumbnail,
-        isbn: item.volumeInfo.industryIdentifiers
-          ? item.volumeInfo.industryIdentifiers.find(
-              (id) => id.type === 'ISBN_13'
-            )?.identifier || 'N/A'
-          : 'N/A',
-      }));
-
-      const filteredBooks = mappedBooks.filter(
-        (book) => book.imagePath && book.description
-      );
-
-      return filteredBooks;
-    }
-
-    return []; 
+    return response.data.items
+      .map(mapBookItem)
+      .filter((book) => book.imagePath && book.description);
   } catch (error) {
     console.error(
       'Google Books API Error:',
-      error.response ? error.response.data : error.message
+      error.response?.data || error.message
     );
     throw new HttpError('Unable to fetch books from external API', 503);
   }
 };
 
+const mapBookItem = (item) => ({
+  bid: generateBid(item),
+  title: item.volumeInfo.title || 'Unknown Title',
+  author: item.volumeInfo.authors?.[0] || 'Unknown Author',
+  description: item.volumeInfo.description || '',
+  genre: item.volumeInfo.categories?.[0] || 'Uncategorized',
+  imagePath: item.volumeInfo.imageLinks?.thumbnail,
+  isbn: findISBN13(item.volumeInfo.industryIdentifiers),
+  lowercaseTitle: (item.volumeInfo.title || 'Unknown Title').toLowerCase(),
+  lowercaseAuthor: (
+    item.volumeInfo.authors?.[0] || 'Unknown Author'
+  ).toLowerCase(),
+});
+
 const generateBid = (item) => {
   const uniqueString = `${item.id}-${item.etag}-${Date.now()}`;
-  return `${hashSum(uniqueString)}`.substring(0, 28);
+  return hashSum(uniqueString).substring(0, 28);
 };
 
-
-export const updateBookHelper = async (bid, updateData) => {
-  const bookRef = bookCollection.doc(bid);
-  const bookDoc = await bookRef.get();
-
-  if (!bookDoc.exists) {
-    throw new HttpError('Book not found', 404);
-  }
-
-  const updatedBook = {
-    ...bookDoc.data(),
-    ...updateData,
-    updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-    updatedAtString: new Date().toISOString(),
-  };
-
-  await bookRef.update(updatedBook);
-  return fetchBookById(bid);
-};
-
-export const deleteBookHelper = async (bid) => {
-  const bookRef = bookCollection.doc(bid);
-  const bookDoc = await bookRef.get();
-
-  if (!bookDoc.exists) {
-    throw new HttpError('Book not found', 404);
-  }
-
-  const batch = bookCollection.firestore.batch();
-
-  // Delete the book from the books collection
-  batch.delete(bookRef);
-
-  // Search and delete user books referencing the bid
-  const userBooksSnapshot = await userBookCollection
-    .where('bid', '==', bid)
-    .get();
-  userBooksSnapshot.forEach((doc) => {
-    batch.delete(doc.ref);
-  });
-
-  // Commit the batch
-  await batch.commit();
+const findISBN13 = (industryIdentifiers) => {
+  if (!industryIdentifiers) return 'N/A';
+  const isbn13 = industryIdentifiers.find((id) => id.type === 'ISBN_13');
+  return isbn13 ? isbn13.identifier : 'N/A';
 };
 
 const mapCategoryFromBooks = async (categoryField) => {

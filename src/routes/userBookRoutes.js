@@ -1,5 +1,6 @@
 import express from 'express';
 import {
+  debugUserBookStructure,
   createUserBook,
   getUserBooks,
   getUserBookById,
@@ -13,6 +14,9 @@ import {
 import verifyToken from '../middleware/authMiddleware.js';
 
 const router = express.Router();
+
+// Debug routes
+router.get('/debug/userbook/:ubid', debugUserBookStructure);
 
 // User Book routes
 router.post('/userBooks', verifyToken, createUserBook);

@@ -18,6 +18,24 @@ import {
 } from './utils/userBookHelpers.js';
 import { sortBooks } from './utils/bookSorting.js';
 
+// Debug endpoint
+export const debugUserBookStructure = async (req, res, next) => {
+  try {
+    const { ubid } = req.params;
+    const userBook = await fetchUserBookById(ubid);
+    const combinedData = await fetchCombinedUserBookData(userBook);
+    res.status(200).json({
+      message: 'UserBook structure',
+      data: {
+        userBook,
+        combinedUserBook: combinedData,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // Create User Book
 export const createUserBook = async (req, res, next) => {
   try {

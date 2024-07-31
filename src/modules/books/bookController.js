@@ -1,4 +1,5 @@
 import HttpError from '../../models/httpErrorModel.js';
+import { formatBookCoverResponse, formatBookDetailsResponse } from './helpers/utilityHelpers.js';
 import {
   validateInput,
 } from './helpers/validationHelpers.js';
@@ -24,6 +25,8 @@ export const getBookById = async (req, res, next) => {
     const { bid } = req.params;
     const book = await fetchBookById(bid);
 
+    book = formatBookDetailsResponse(book);
+
     res.status(200).json({
       data: {
         message: 'Book fetched successfully',
@@ -35,21 +38,14 @@ export const getBookById = async (req, res, next) => {
   }
 };
 
-
 // Get Books with sorting
 export const getBooks = async (req, res, next) => {
   try {
     const { sortBy = 'title', order = 'asc', full = 'false' } = req.query;
     let books = await fetchAllBooks(sortBy, order);
 
-    //todo: create helperFunction to return cover info
     if (full.toLowerCase() !== 'true') {
-      books = books.map(({ bid, title, author, imagePath }) => ({
-        bid,
-        title,
-        author,
-        imagePath,
-      }));
+      books = books.map(formatBookCoverResponse);
     }
 
     res.status(200).json({
@@ -68,15 +64,8 @@ export const createBook = async (req, res, next) => {
   try {
     validateInput(req.body, createBookSchema);
     let book = await createBookHelper(req.body);
-    console.log(req.body)
 
-    //todo: see if i return whole book or part book
-    book = {
-      bid: book.bid,
-      title: book.title,
-      author: book.author,
-      imagePath: book.imagePath,
-    };
+    book = formatBookCoverResponse(book);
 
     res.status(201).json({
       data: {
@@ -99,13 +88,7 @@ export const updateBook = async (req, res, next) => {
 
     let updatedBook = await updateBookHelper(bid, updateData);
 
-    //todo: see if i return whole book or part book
-    updatedBook = {
-      bid: updatedBook.bid,
-      title: updatedBook.title,
-      author: updatedBook.author,
-      imagePath: updatedBook.imagePath,
-    };
+    updatedBook = formatBookCoverResponse(updatedBook);
 
     res.status(200).json({
       data: {
@@ -166,14 +149,8 @@ export const searchBook = async (req, res, next) => {
       books = await searchBooksInGoogleAPI(googleQuery);
     }
 
-    //todo: create helperFunction to return cover info
     if (full.toLowerCase() !== 'true') {
-      books = books.map(({ bid, title, author, imagePath }) => ({
-        bid,
-        title,
-        author,
-        imagePath,
-      }));
+      books = books.map(formatBookCoverResponse);
     }
 
     res.status(200).json({

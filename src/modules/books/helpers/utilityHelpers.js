@@ -1,5 +1,27 @@
 import hashSum from 'hash-sum';
 
+export const formatBookCoverResponse = (book) => {
+  return {
+    bid: book.bid,
+    title: book.title,
+    author: book.author,
+    imagePath: book.imagePath,
+  };
+};
+
+export const formatBookDetailsResponse = (book) => {
+  return {
+    author: book.author,
+    title: book.title,
+    description: book.description,
+    genre: book.genre,
+    imagePath: book.imagePath,
+    isbn: book.isbn,
+    seriesName: book.seriesName,
+    seriesNumber: book.seriesNumber,
+  };
+};
+
 export const generateLowercaseFields = (book) => {
   return {
     ...book,

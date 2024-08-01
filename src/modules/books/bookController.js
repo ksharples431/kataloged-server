@@ -150,7 +150,7 @@ export const searchBook = async (req, res, next) => {
     }
 
     if (full.toLowerCase() !== 'true') {
-      books = books.map(formatBookCoverResponse);
+      books = books.map(formatBookDetailsResponse);
     }
 
     res.status(200).json({

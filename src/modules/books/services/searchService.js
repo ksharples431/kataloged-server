@@ -47,7 +47,10 @@ export async function searchBooksInDatabase(searchParams) {
   }
 }
 
-export const searchBooksInGoogleAPI = async (googleQuery) => {
+export const searchBooksInGoogleAPI = async (
+  googleQuery,
+  maxResults = 20,
+) => {
   const GOOGLE_BOOKS_API_URL =
     'https://www.googleapis.com/books/v1/volumes';
 
@@ -60,6 +63,7 @@ export const searchBooksInGoogleAPI = async (googleQuery) => {
       params: {
         q: googleQuery,
         key: process.env.GOOGLE_BOOKS_API_KEY,
+        maxResults: maxResults,
       },
       headers: {
         Referer: process.env.APP_URL_PROD || process.env.APP_URL_LOCAL,

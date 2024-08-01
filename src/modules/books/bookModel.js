@@ -13,9 +13,9 @@ export const createBookSchema = Joi.object({
   seriesName: Joi.string(),
   seriesNumber: Joi.string(),
   updatedAtString: Joi.date().iso(),
-  
-  bid: Joi.string().forbidden(),
-  id: Joi.string(),
+
+  bid: Joi.string().optional(),
+  id: Joi.string().optional(),
 });
 
 export const updateBookSchema = Joi.object({

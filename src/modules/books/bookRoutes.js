@@ -12,6 +12,7 @@ import {
 const router = express.Router();
 
 // Book routes
+router.get('/books/search', searchBook); //must be before and :bid routes
 router.get('/books/:bid', getBookById);
 router.get('/books', getBooks);
 
@@ -21,6 +22,5 @@ router.put('/books/:bid', verifyToken, updateBook);
 
 router.delete('/books/:bid', verifyToken, deleteBook);
 
-router.get('/books/search', searchBook);
 
 export default router;

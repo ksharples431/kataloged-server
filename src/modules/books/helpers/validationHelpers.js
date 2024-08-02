@@ -33,3 +33,19 @@ export const validateSortOptions = (sortBy, order) => {
     throw new HttpError('Invalid sort order', 400);
   }
 };
+
+export const validateSearchParams = ({ title, author, isbn }) => {
+  if (!title && !author && !isbn) {
+    throw new HttpError(
+      'At least one search parameter (title, author, or isbn) is required',
+      400
+    );
+  }
+};
+
+export const validateGoogleQuery = (googleQuery) => {
+  if (!googleQuery) {
+    throw new HttpError('Invalid search criteria', 400);
+  }
+};
+

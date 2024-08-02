@@ -1,16 +1,19 @@
-import HttpError from '../../models/httpErrorModel.js';
-import { formatBookCoverResponse, formatBookDetailsResponse } from './helpers/utilityHelpers.js';
+import { createBookSchema, updateBookSchema } from './bookModel.js';
+import {
+  buildGoogleQuery,
+  } from './helpers/searchHelpers.js';
 import {
   validateInput,
+  validateSearchParams,
 } from './helpers/validationHelpers.js';
-import {
-  createBookSchema,
-  updateBookSchema,
-} from './bookModel.js';
 import {
   searchBooksInDatabase,
   searchBooksInGoogleAPI,
 } from './services/searchService.js';
+import {
+  formatBookCoverResponse,
+  formatBookDetailsResponse,
+} from './helpers/utilityHelpers.js';
 import {
   fetchBookById,
   fetchAllBooks,
@@ -71,7 +74,7 @@ export const createBook = async (req, res, next) => {
       data: {
         message: 'Book created successfully',
         book,
-      }
+      },
     });
   } catch (error) {
     next(error);
@@ -111,7 +114,7 @@ export const deleteBook = async (req, res, next) => {
     res.status(200).json({
       data: {
         message: 'Book and related user books deleted successfully',
-      }
+      },
     });
   } catch (error) {
     next(error);
@@ -121,47 +124,26 @@ export const deleteBook = async (req, res, next) => {
 // Search Books
 export const searchBook = async (req, res, next) => {
   try {
-    const { title, author, isbn, full = 'false' } = req.query;
+    const { title, author, isbn } = req.query;
 
-    if (!title && !author && !isbn) {
-      throw new HttpError(
-        'At least one search parameter (title, author, or isbn) is required',
-        400
-      );
-    }
+    validateSearchParams({ title, author, isbn });
 
-    const searchParams = { title, author, isbn };
-
-    let books = await searchBooksInDatabase(searchParams);
+    let books = await searchBooksInDatabase({ title, author, isbn });
 
     if (books.length === 0) {
-      let googleQuery = '';
-      if (isbn) {
-        googleQuery = `isbn:${isbn}`;
-      } else if (title && author) {
-        googleQuery = `intitle:${title}+inauthor:${author}`;
-      } else if (title) {
-        googleQuery = `intitle:${title}`;
-      } else if (author) {
-        googleQuery = `inauthor:${author}`;
-      }
-
+      const googleQuery = buildGoogleQuery({ title, author, isbn });
       books = await searchBooksInGoogleAPI(googleQuery);
     }
 
-    if (full.toLowerCase() !== 'true') {
-      books = books.map(formatBookDetailsResponse);
-    }
+    books = books.map(formatBookDetailsResponse);
 
     res.status(200).json({
       data: {
         message: books.length > 0 ? 'Books found' : 'No books found',
         books,
-      }
+      },
     });
   } catch (error) {
     next(error);
   }
 };
-
-

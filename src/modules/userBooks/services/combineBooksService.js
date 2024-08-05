@@ -1,26 +1,32 @@
-import db from '../../config/firebaseConfig.js';
+import { fetchBookById } from './userBookService.js';
+import HttpError from '../../../models/httpErrorModel.js';
 
-const bookCollection = db.collection('books');
-
-export const fetchCombinedBookData = async (userBookDoc) => {
-  const userBookData = formatResponseData(userBookDoc, 'ubid');
-  const bookDoc = await bookCollection.doc(userBookData.bid).get();
-
-  if (!bookDoc.exists) {
-    console.warn(`Book with id ${userBookData.bid} not found`);
-    return null;
+// Helper function to combine a single user book with its corresponding book data
+const combineBookData = async (userBook) => {
+  try {
+    const bookData = await fetchBookById(userBook.bid);
+    return {
+      ...bookData,
+      ...userBook,
+    };
+  } catch (error) {
+    console.warn(
+      `Failed to fetch book data for bid ${userBook.bid}:`,
+      error
+    );
+    return userBook; // Return just the user book data if book fetch fails
   }
-
-  const bookData = formatResponseData(bookDoc);
-
-  return {
-    ...userBookData,
-    ...bookData,
-  };
 };
 
-export const fetchCombinedBooksData = async (userBookDocs) => {
-  return Promise.all(userBookDocs.map(fetchCombinedBookData)).then(
-    (results) => results.filter(Boolean)
-  );
+// Main helper function to combine books data
+export const combineBooksData = async (userBooks) => {
+  if (!Array.isArray(userBooks)) {
+    // If it's a single book, wrap it in an array
+    userBooks = [userBooks];
+  }
+
+  const combinedBooks = await Promise.all(userBooks.map(combineBookData));
+
+  // If it was originally a single book, return just that book
+  return Array.isArray(userBooks) ? combinedBooks : combinedBooks[0];
 };

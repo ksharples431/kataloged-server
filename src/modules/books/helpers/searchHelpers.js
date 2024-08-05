@@ -60,10 +60,15 @@ export const executeQuery = async (query) => {
     const snapshot = await query.get();
     return snapshot.docs.map((doc) => doc.data());
   } catch (error) {
-    console.error('Error searching books in database:', error);
-    throw new HttpError('Error searching books in database', 500);
+    throw new HttpError(
+      'Error searching books in database',
+      500,
+      'DATABASE_QUERY_ERROR',
+      { query: query.toString() }
+    );
   }
 };
+
 
 export const buildGoogleQuery = ({ title, author, isbn }) => {
   if (isbn) {
@@ -75,7 +80,12 @@ export const buildGoogleQuery = ({ title, author, isbn }) => {
   } else if (author) {
     return `inauthor:${author}`;
   }
-  return '';
+  throw new HttpError(
+    'Invalid search parameters',
+    400,
+    'INVALID_SEARCH_PARAMS',
+    { title, author, isbn }
+  );
 };
 
 export const buildRequestConfig = (googleQuery) => {
@@ -96,8 +106,19 @@ export const fetchBooksFromGoogleAPI = async (config) => {
     const response = await axios.get(GOOGLE_BOOKS_API_URL, config);
     return response.data;
   } catch (error) {
-    console.error('Google Books API Error:', error.message);
-    throw error; 
+    if (axios.isAxiosError(error)) {
+      throw new HttpError(
+        'Google Books API Error',
+        error.response?.status || 500,
+        'GOOGLE_API_ERROR',
+        { message: error.message }
+      );
+    }
+    throw new HttpError(
+      'Unknown error occurred while fetching books from Google API',
+      500,
+      'UNKNOWN_GOOGLE_API_ERROR'
+    );
   }
 };
 
@@ -106,7 +127,16 @@ export const processApiResponse = (data) => {
     return [];
   }
 
-  return data.items
-    .map(mapBookItem)
-    .filter((book) => book.imagePath && book.description);
+  try {
+    return data.items
+      .map(mapBookItem)
+      .filter((book) => book.imagePath && book.description);
+  } catch (error) {
+    throw new HttpError(
+      'Error processing API response',
+      500,
+      'API_RESPONSE_PROCESSING_ERROR',
+      { data }
+    );
+  }
 };

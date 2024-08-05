@@ -1,9 +1,9 @@
+import HttpError from '../../models/httpErrorModel.js';
 import { createBookSchema, updateBookSchema } from './bookModel.js';
-import {
-  buildGoogleQuery,
-  } from './helpers/searchHelpers.js';
+import { buildGoogleQuery } from './helpers/searchHelpers.js';
 import {
   validateInput,
+  validateSortOptions,
   validateSearchParams,
 } from './helpers/validationHelpers.js';
 import {
@@ -22,12 +22,10 @@ import {
   deleteBookHelper,
 } from './services/bookService.js';
 
-// Get Book by Id
 export const getBookById = async (req, res, next) => {
   try {
     const { bid } = req.params;
     let book = await fetchBookById(bid);
-
     book = formatBookDetailsResponse(book);
 
     res.status(200).json({
@@ -37,14 +35,22 @@ export const getBookById = async (req, res, next) => {
       },
     });
   } catch (error) {
-    next(error);
+    if (error instanceof HttpError) {
+      next(error);
+    } else {
+      next(
+        new HttpError('Failed to fetch book', 500, 'FETCH_BOOK_ERROR', {
+          bid: req.params.bid,
+        })
+      );
+    }
   }
 };
 
-// Get Books with sorting
 export const getBooks = async (req, res, next) => {
   try {
     const { sortBy = 'title', order = 'asc', full = 'false' } = req.query;
+    validateSortOptions(sortBy, order);
     let books = await fetchAllBooks(sortBy, order);
 
     if (full.toLowerCase() !== 'true') {
@@ -58,16 +64,24 @@ export const getBooks = async (req, res, next) => {
       },
     });
   } catch (error) {
-    next(error);
+    if (error instanceof HttpError) {
+      next(error);
+    } else {
+      next(
+        new HttpError('Failed to fetch books', 500, 'FETCH_BOOKS_ERROR', {
+          sortBy,
+          order,
+          full,
+        })
+      );
+    }
   }
 };
 
-// Create Book
 export const createBook = async (req, res, next) => {
   try {
     validateInput(req.body, createBookSchema);
     let book = await createBookHelper(req.body);
-
     book = formatBookCoverResponse(book);
 
     res.status(201).json({
@@ -77,20 +91,24 @@ export const createBook = async (req, res, next) => {
       },
     });
   } catch (error) {
-    next(error);
+    if (error instanceof HttpError) {
+      next(error);
+    } else {
+      next(
+        new HttpError('Failed to create book', 500, 'CREATE_BOOK_ERROR', {
+          bookData: req.body,
+        })
+      );
+    }
   }
 };
 
-// Update Book
 export const updateBook = async (req, res, next) => {
   try {
     validateInput(req.body, updateBookSchema);
-
     const { bid } = req.params;
     const updateData = req.body;
-
     let updatedBook = await updateBookHelper(bid, updateData);
-
     updatedBook = formatBookCoverResponse(updatedBook);
 
     res.status(200).json({
@@ -100,15 +118,22 @@ export const updateBook = async (req, res, next) => {
       },
     });
   } catch (error) {
-    next(error);
+    if (error instanceof HttpError) {
+      next(error);
+    } else {
+      next(
+        new HttpError('Failed to update book', 500, 'UPDATE_BOOK_ERROR', {
+          bid: req.params.bid,
+          updateData: req.body,
+        })
+      );
+    }
   }
 };
 
-// Delete Book
 export const deleteBook = async (req, res, next) => {
   try {
     const { bid } = req.params;
-
     await deleteBookHelper(bid);
 
     res.status(200).json({
@@ -117,15 +142,21 @@ export const deleteBook = async (req, res, next) => {
       },
     });
   } catch (error) {
-    next(error);
+    if (error instanceof HttpError) {
+      next(error);
+    } else {
+      next(
+        new HttpError('Failed to delete book', 500, 'DELETE_BOOK_ERROR', {
+          bid: req.params.bid,
+        })
+      );
+    }
   }
 };
 
-// Search Books
 export const searchBook = async (req, res, next) => {
   try {
     const { title, author, isbn } = req.query;
-
     validateSearchParams({ title, author, isbn });
 
     let books = await searchBooksInDatabase({ title, author, isbn });
@@ -144,6 +175,17 @@ export const searchBook = async (req, res, next) => {
       },
     });
   } catch (error) {
-    next(error);
+    if (error instanceof HttpError) {
+      next(error);
+    } else {
+      next(
+        new HttpError(
+          'Failed to search books',
+          500,
+          'SEARCH_BOOKS_ERROR',
+          { searchParams: req.query }
+        )
+      );
+    }
   }
 };

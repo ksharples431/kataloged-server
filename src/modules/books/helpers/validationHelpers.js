@@ -1,17 +1,24 @@
 import HttpError from '../../../models/httpErrorModel.js';
 
-//todo make this book specific and create same for author/genre
 export const validateInput = (data, schema) => {
   try {
     const { error } = schema.validate(data);
     if (error) {
-      throw new HttpError(error.details[0].message, 400);
+      throw new HttpError(
+        error.details[0].message,
+        400,
+        'VALIDATION_ERROR',
+        { data }
+      );
     }
   } catch (error) {
-    if (error instanceof HttpError) {
-      throw error;
-    }
-    throw new HttpError('Validation error', 400);
+    if (error instanceof HttpError) throw error;
+    throw new HttpError(
+      'Validation error',
+      400,
+      'UNKNOWN_VALIDATION_ERROR',
+      { data }
+    );
   }
 };
 
@@ -26,11 +33,15 @@ export const validateSortOptions = (sortBy, order) => {
   const validOrders = ['asc', 'desc'];
 
   if (!validSortFields.includes(sortBy)) {
-    throw new HttpError('Invalid sort field', 400);
+    throw new HttpError('Invalid sort field', 400, 'INVALID_SORT_FIELD', {
+      sortBy,
+    });
   }
 
   if (!validOrders.includes(order.toLowerCase())) {
-    throw new HttpError('Invalid sort order', 400);
+    throw new HttpError('Invalid sort order', 400, 'INVALID_SORT_ORDER', {
+      order,
+    });
   }
 };
 
@@ -38,14 +49,18 @@ export const validateSearchParams = ({ title, author, isbn }) => {
   if (!title && !author && !isbn) {
     throw new HttpError(
       'At least one search parameter (title, author, or isbn) is required',
-      400
+      400,
+      'MISSING_SEARCH_PARAMS'
     );
   }
 };
 
 export const validateGoogleQuery = (googleQuery) => {
   if (!googleQuery) {
-    throw new HttpError('Invalid search criteria', 400);
+    throw new HttpError(
+      'Invalid search criteria',
+      400,
+      'INVALID_GOOGLE_QUERY'
+    );
   }
 };
-

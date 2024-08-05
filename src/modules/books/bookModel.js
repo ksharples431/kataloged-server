@@ -3,7 +3,6 @@ import Joi from 'joi';
 //todo: transform incoming data so i dont have to accept id
 export const createBookSchema = Joi.object({
   author: Joi.string().required(),
-  title: Joi.string().required(),
   description: Joi.string(),
   genre: Joi.string(),
   imagePath: Joi.string(),
@@ -12,6 +11,7 @@ export const createBookSchema = Joi.object({
   lowercaseTitle: Joi.string(),
   seriesName: Joi.string(),
   seriesNumber: Joi.string(),
+  title: Joi.string().required(),
   updatedAtString: Joi.date().iso(),
 
   bid: Joi.string().optional(),
@@ -20,7 +20,6 @@ export const createBookSchema = Joi.object({
 
 export const updateBookSchema = Joi.object({
   author: Joi.string(),
-  title: Joi.string(),
   description: Joi.string(),
   genre: Joi.string(),
   imagePath: Joi.string(),
@@ -29,6 +28,7 @@ export const updateBookSchema = Joi.object({
   lowercaseTitle: Joi.string(),
   seriesName: Joi.string(),
   seriesNumber: Joi.string(),
+  title: Joi.string(),
   updatedAtString: Joi.date().iso(),
 
   bid: Joi.string().forbidden(),

@@ -1,27 +1,11 @@
 export default class HttpError extends Error {
-  constructor(message, statusCode) {
+  constructor(message, statusCode, errorCode = null, details = null) {
     super(message);
     this.statusCode = statusCode || 500;
     this.name = this.constructor.name;
     this.isOperational = true;
+    this.errorCode = errorCode;
+    this.details = details;
     Error.captureStackTrace(this, this.constructor);
-  }
-}
-
-export class ValidationError extends HttpError {
-  constructor(message) {
-    super(message, 400);
-  }
-}
-
-export class NotFoundError extends HttpError {
-  constructor(resource) {
-    super(`${resource} not found`, 404);
-  }
-}
-
-export class DatabaseError extends HttpError {
-  constructor(operation) {
-    super(`Database error during ${operation}`, 500);
   }
 }

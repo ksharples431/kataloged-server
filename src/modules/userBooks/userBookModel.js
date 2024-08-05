@@ -1,23 +1,17 @@
 import Joi from 'joi';
-
-const firestoreTimestampSchema = Joi.object({
-  _seconds: Joi.number().integer().required(),
-  _nanoseconds: Joi.number().integer().min(0).max(999999999).required(),
-})
-
-
+//todo: double check data going both directions
+//todo: transform incoming data so i dont have to accept id
 export const addUserBookSchema = Joi.object({
   bid: Joi.string().required(),
-  createdAt: firestoreTimestampSchema,
   uid: Joi.string().required(),
-  updatedAt: firestoreTimestampSchema,
+  kataloged: Joi.boolean(),
   updatedAtString: Joi.date().iso(),
+
+  id: Joi.string().optional(),
 });
 
 export const updateUserBookSchema = Joi.object({
   author: Joi.string(),
-  bid: Joi.string(),
-  createdAt: firestoreTimestampSchema,
   description: Joi.string(),
   favorite: Joi.boolean(),
   format: Joi.string(),
@@ -30,9 +24,11 @@ export const updateUserBookSchema = Joi.object({
   seriesName: Joi.string(),
   seriesNumber: Joi.string(),
   title: Joi.string(),
-  updatedAt: firestoreTimestampSchema,
   updatedAtString: Joi.date().iso(),
-  uid: Joi.string(),
   whereToGet: Joi.string(),
   wishlist: Joi.boolean(),
+
+  bid: Joi.string().forbidden(),
+  uid: Joi.string().forbidden(),
+  id: Joi.string(),
 });

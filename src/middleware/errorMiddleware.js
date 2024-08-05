@@ -157,9 +157,14 @@ const mapFirebaseErrorToHttpError = (err) => {
   );
 };
 
-// Middleware to handle 404 errors
-export const notFound = (req, res, next) => {
-  next(new HttpError(`Not Found - ${req.originalUrl}`, 404));
+const errorCategories = {
+  400: 'ValidationError',
+  401: 'AuthenticationError',
+  403: 'AuthorizationError',
+  404: 'NotFoundError',
+  409: 'ConflictError',
+  429: 'RateLimitError',
+  500: 'ServerError',
 };
 
 // General error handling middleware
@@ -205,12 +210,27 @@ export const errorHandler = (err, req, res, next) => {
 
   const response = {
     message: error.message,
+    statusCode: error.statusCode,
+    category: errorCategories[error.statusCode] || 'UnknownError',
     requestId: req.id,
   };
+
+  if (error.errorCode) {
+    response.errorCode = error.errorCode;
+  }
+
+  if (error.details) {
+    response.details = error.details;
+  }
 
   if (process.env.NODE_ENV !== 'production') {
     response.stack = error.stack;
   }
 
   res.status(error.statusCode).json(response);
+};
+
+// Not found route handler
+export const notFound = (req, res, next) => {
+  next(new HttpError(`Not Found - ${req.originalUrl}`, 404));
 };

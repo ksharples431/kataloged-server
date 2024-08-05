@@ -1,8 +1,5 @@
 import HttpError from '../../models/httpErrorModel.js';
 import {
-  combineBooksData,
-} from './services/combineBooksService.js';
-import {
   addUserBookSchema,
   updateUserBookSchema,
 } from './userBookModel.js';
@@ -27,13 +24,7 @@ export const getUserBookById = async (req, res, next) => {
   try {
     const { ubid } = req.params;
     let userBook = await fetchUserBookById(ubid);
-
-    if (!userBook) {
-      throw new HttpError('User book not found', 404);
-    }
-
-    const combinedBook = await combineBooksData(userBook);
-    userBook = formatUserBookDetailsResponse(combinedBook);
+    userBook = formatUserBookDetailsResponse(userBook);
 
     res.status(200).json({
       data: {
@@ -42,7 +33,20 @@ export const getUserBookById = async (req, res, next) => {
       },
     });
   } catch (error) {
-    next(error);
+    if (error instanceof HttpError) {
+      next(error);
+    } else {
+      next(
+        new HttpError(
+          'Failed to fetch user book',
+          500,
+          'FETCH_USERBOOK_ERROR',
+          {
+            ubid: req.params.ubid,
+          }
+        )
+      );
+    }
   }
 };
 
@@ -58,43 +62,49 @@ export const getUserBooks = async (req, res, next) => {
     validateSortOptions(sortBy, order);
 
     if (!uid) {
-      throw new HttpError('User ID is required', 400);
+      throw new HttpError('User ID is required', 400, 'MISSING_UID');
     }
 
     let userBooks = await fetchUserBooks(uid, sortBy, order);
 
-    if (userBooks.length === 0) {
-      return res.status(200).json({
-        data: {
-          message: "No books in user's library",
-          books: [],
-        },
-      });
-    }
-
-    const combinedBooks = await combineBooksData(userBooks);
-
     if (full.toLowerCase() !== 'true') {
-      userBooks = combinedBooks.map(formatUserBookCoverResponse);
+      userBooks = userBooks.map(formatUserBookCoverResponse);
     }
 
     res.status(200).json({
       data: {
-        message: 'User books fetched successfully',
+        message:
+          userBooks.length > 0
+            ? 'User books fetched successfully'
+            : "No books in user's library",
         books: userBooks,
       },
     });
   } catch (error) {
-    next(error);
+    if (error instanceof HttpError) {
+      next(error);
+    } else {
+      next(
+        new HttpError(
+          'Failed to fetch user books',
+          500,
+          'FETCH_USERBOOKS_ERROR',
+          {
+            uid: req.query.uid,
+            sortBy: req.query.sortBy,
+            order: req.query.order,
+            full: req.query.full,
+          }
+        )
+      );
+    }
   }
 };
 
-// Create User Book
 export const createUserBook = async (req, res, next) => {
   try {
     validateInput(req.body, addUserBookSchema);
     let userBook = await createUserBookHelper(req.body);
-
     userBook = formatUserBookCoverResponse(userBook);
 
     res.status(201).json({
@@ -104,23 +114,30 @@ export const createUserBook = async (req, res, next) => {
       },
     });
   } catch (error) {
-    next(error);
+    if (error instanceof HttpError) {
+      next(error);
+    } else {
+      next(
+        new HttpError(
+          'Failed to create user book',
+          500,
+          'CREATE_USERBOOK_ERROR',
+          {
+            userBookData: req.body,
+          }
+        )
+      );
+    }
   }
 };
 
-// Update User Book
 export const updateUserBook = async (req, res, next) => {
   try {
     validateInput(req.body, updateUserBookSchema);
-
     const { ubid } = req.params;
     const updateData = req.body;
-
     let updatedUserBook = await updateUserBookHelper(ubid, updateData);
-
-    const combinedBook = await combineBooksData(updatedUserBook);
-
-    updatedUserBook = formatUserBookCoverResponse(combinedBook);
+    updatedUserBook = formatUserBookCoverResponse(updatedUserBook);
 
     res.status(200).json({
       data: {
@@ -129,14 +146,27 @@ export const updateUserBook = async (req, res, next) => {
       },
     });
   } catch (error) {
-    next(error);
+    if (error instanceof HttpError) {
+      next(error);
+    } else {
+      next(
+        new HttpError(
+          'Failed to update user book',
+          500,
+          'UPDATE_USERBOOK_ERROR',
+          {
+            ubid: req.params.ubid,
+            updateData: req.body,
+          }
+        )
+      );
+    }
   }
 };
 
 export const deleteUserBook = async (req, res, next) => {
   try {
     const { ubid } = req.params;
-
     await deleteUserBookHelper(ubid);
 
     res.status(200).json({
@@ -145,6 +175,19 @@ export const deleteUserBook = async (req, res, next) => {
       },
     });
   } catch (error) {
-    next(error);
+    if (error instanceof HttpError) {
+      next(error);
+    } else {
+      next(
+        new HttpError(
+          'Failed to delete user book',
+          500,
+          'DELETE_USERBOOK_ERROR',
+          {
+            ubid: req.params.ubid,
+          }
+        )
+      );
+    }
   }
 };

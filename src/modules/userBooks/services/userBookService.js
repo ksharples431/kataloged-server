@@ -1,7 +1,7 @@
 import db from '../../../config/firebaseConfig.js';
 import HttpError from '../../../models/httpErrorModel.js';
-import firebase from 'firebase-admin';
 import { sortBooks } from '../helpers/sortingHelpers.js';
+import { combineBooksData } from './services/combineBooksService.js';
 import { validateSortOptions } from '../helpers/validationHelpers.js';
 import { generateLowercaseFields } from '../helpers/utilityHelpers.js';
 
@@ -12,15 +12,16 @@ export const fetchBookById = async (bid) => {
   try {
     const bookDoc = await bookCollection.doc(bid).get();
     if (!bookDoc.exists) {
-      throw new HttpError('Book not found', 404);
+      throw new HttpError('Book not found', 404, 'BOOK_NOT_FOUND', {
+        bid,
+      });
     }
     return bookDoc.data();
   } catch (error) {
-    if (error instanceof HttpError) {
-      throw error;
-    }
-    console.error('Error fetching book:', error);
-    throw new HttpError('Failed to fetch book', 500);
+    if (error instanceof HttpError) throw error;
+    throw new HttpError('Failed to fetch book', 500, 'FETCH_BOOK_ERROR', {
+      bid,
+    });
   }
 };
 
@@ -28,15 +29,23 @@ export const fetchUserBookById = async (ubid) => {
   try {
     const userBookDoc = await userBookCollection.doc(ubid).get();
     if (!userBookDoc.exists) {
-      throw new HttpError('User book not found', 404);
+      throw new HttpError(
+        'User book not found',
+        404,
+        'USERBOOK_NOT_FOUND',
+        { ubid }
+      );
     }
-    return userBookDoc.data();
+    const userBook = userBookDoc.data();
+    return await combineBooksData(userBook);
   } catch (error) {
-    if (error instanceof HttpError) {
-      throw error;
-    }
-    console.error('Error fetching user book:', error);
-    throw new HttpError('Failed to fetch user book', 500);
+    if (error instanceof HttpError) throw error;
+    throw new HttpError(
+      'Failed to fetch user book',
+      500,
+      'FETCH_USERBOOK_ERROR',
+      { ubid }
+    );
   }
 };
 
@@ -47,29 +56,25 @@ export const fetchUserBooks = async (
 ) => {
   try {
     validateSortOptions(sortBy, order);
-
     const snapshot = await userBookCollection
       .where('uid', '==', uid)
       .get();
     let userBooks = snapshot.docs.map((doc) => doc.data());
 
-    // combine user books with book data
-
+    userBooks = await combineBooksData(userBooks);
     return sortBooks(userBooks, sortBy, order);
   } catch (error) {
-    if (error instanceof HttpError) {
-      throw error;
-    }
-    console.error('Error fetching user books:', error);
-    throw new HttpError('Failed to fetch user books', 500);
+    if (error instanceof HttpError) throw error;
+    throw new HttpError(
+      'Failed to fetch user books',
+      500,
+      'FETCH_USERBOOKS_ERROR',
+      { uid, sortBy, order }
+    );
   }
 };
 
-export const createUserBookHelper = async ({
-  uid,
-  bid,
-  kataloged
-}) => {
+export const createUserBookHelper = async ({ uid, bid, kataloged }) => {
   try {
     const existingBook = await userBookCollection
       .where('uid', '==', uid)
@@ -79,7 +84,8 @@ export const createUserBookHelper = async ({
     if (!existingBook.empty) {
       throw new HttpError(
         "This book already exists in the user's library",
-        409
+        409,
+        'USERBOOK_ALREADY_EXISTS'
       );
     }
 
@@ -93,13 +99,15 @@ export const createUserBookHelper = async ({
     const docRef = await userBookCollection.add(newUserBook);
     const ubid = docRef.id;
     await docRef.update({ ubid });
-    return fetchUserBookById(ubid);
+    return await fetchUserBookById(ubid);
   } catch (error) {
-    console.error('Error creating user book:', error);
-    if (error instanceof HttpError) {
-      throw error;
-    }
-    throw new HttpError('Failed to create user book', 500);
+    if (error instanceof HttpError) throw error;
+    throw new HttpError(
+      'Failed to create user book',
+      500,
+      'CREATE_USERBOOK_ERROR',
+      { uid, bid }
+    );
   }
 };
 
@@ -109,13 +117,17 @@ export const updateUserBookHelper = async (ubid, updateData) => {
     const userBookDoc = await userBookRef.get();
 
     if (!userBookDoc.exists) {
-      throw new HttpError('User book not found', 404);
+      throw new HttpError(
+        'User book not found',
+        404,
+        'USERBOOK_NOT_FOUND',
+        { ubid }
+      );
     }
 
     const mergedData = {
       ...userBookDoc.data(),
       ...updateData,
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
       updatedAtString: new Date().toISOString(),
     };
 
@@ -128,11 +140,13 @@ export const updateUserBookHelper = async (ubid, updateData) => {
     await userBookRef.update(updatedUserBook);
     return fetchUserBookById(ubid);
   } catch (error) {
-    if (error instanceof HttpError) {
-      throw error;
-    }
-    console.error('Error updating user book:', error);
-    throw new HttpError('Failed to update user book', 500);
+    if (error instanceof HttpError) throw error;
+    throw new HttpError(
+      'Failed to update user book',
+      500,
+      'UPDATE_USERBOOK_ERROR',
+      { ubid }
+    );
   }
 };
 
@@ -142,15 +156,22 @@ export const deleteUserBookHelper = async (ubid) => {
     const userBookDoc = await userBookRef.get();
 
     if (!userBookDoc.exists) {
-      throw new HttpError('User book not found', 404);
+      throw new HttpError(
+        'User book not found',
+        404,
+        'USERBOOK_NOT_FOUND',
+        { ubid }
+      );
     }
 
     await userBookRef.delete();
   } catch (error) {
-    console.error('Error deleting user book:', error);
-    if (error instanceof HttpError) {
-      throw error;
-    }
-    throw new HttpError('Failed to delete user book', 500);
+    if (error instanceof HttpError) throw error;
+    throw new HttpError(
+      'Failed to delete user book',
+      500,
+      'DELETE_USERBOOK_ERROR',
+      { ubid }
+    );
   }
 };

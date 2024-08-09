@@ -25,11 +25,12 @@ export const getUserBookById = async (req, res, next) => {
     const { ubid } = req.params;
     let userBook = await fetchUserBookById(ubid);
     userBook = formatUserBookDetailsResponse(userBook);
+    console.log(userBook)
 
     res.status(200).json({
       data: {
         message: 'User book fetched successfully',
-        book: userBook,
+        userBook: userBook,
       },
     });
   } catch (error) {
@@ -77,7 +78,7 @@ export const getUserBooks = async (req, res, next) => {
           userBooks.length > 0
             ? 'User books fetched successfully'
             : "No books in user's library",
-        books: userBooks,
+        userBooks: userBooks,
       },
     });
   } catch (error) {
@@ -142,7 +143,7 @@ export const updateUserBook = async (req, res, next) => {
     res.status(200).json({
       data: {
         message: 'User book updated successfully',
-        book: updatedUserBook,
+        userBook: updatedUserBook,
       },
     });
   } catch (error) {

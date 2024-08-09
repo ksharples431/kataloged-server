@@ -1,7 +1,7 @@
 import db from '../../../config/firebaseConfig.js';
 import HttpError from '../../../models/httpErrorModel.js';
-import { sortBooks } from '../helpers/sortingHelpers.js';
-import { combineBooksData } from './services/combineBooksService.js';
+import { sortUserBooks } from '../helpers/sortingHelpers.js';
+import { combineBooksData } from './combineBooksService.js';
 import { validateSortOptions } from '../helpers/validationHelpers.js';
 import { generateLowercaseFields } from '../helpers/utilityHelpers.js';
 
@@ -62,7 +62,8 @@ export const fetchUserBooks = async (
     let userBooks = snapshot.docs.map((doc) => doc.data());
 
     userBooks = await combineBooksData(userBooks);
-    return sortBooks(userBooks, sortBy, order);
+    // return sortUserBooks(userBooks, sortBy, order);
+    return userBooks
   } catch (error) {
     if (error instanceof HttpError) throw error;
     throw new HttpError(

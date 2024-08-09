@@ -30,6 +30,13 @@ export const formatUserBookDetailsResponse = (userBook) => {
       seriesName: userBook.seriesName,
       seriesNumber: userBook.seriesNumber,
       title: userBook.title,
+      favorite: userBook.favorite,
+      kataloged: userBook.kataloged,
+      owned: userBook.owned,
+      wishlist: userBook.wishlist,
+      format: userBook.format,
+      whereToGet: userBook.whereToGet,
+      progress: userBook.progress,
     };
   } catch (error) {
     throw new HttpError(

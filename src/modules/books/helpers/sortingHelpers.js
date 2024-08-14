@@ -27,11 +27,9 @@ export const sortBooks = (books, sortBy, order) => {
           comparison = aLastName.localeCompare(bLastName);
           break;
         case 'updatedAt':
-          const dateA = a.updatedAtString;
-          const dateB = b.updatedAtString;
-          if (!isNaN(dateA) && !isNaN(dateB)) {
-            comparison = dateA - dateB;
-          }
+          const dateA = new Date(a.updatedAtString);
+          const dateB = new Date(b.updatedAtString);
+          comparison = dateA.getTime() - dateB.getTime();
           break;
         case 'bookCount':
           comparison = a.bookCount - b.bookCount;

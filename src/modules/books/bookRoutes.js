@@ -7,12 +7,14 @@ import {
   updateBook,
   deleteBook,
   searchBook,
+  searchGoogleBooks
 } from './bookController.js';
 
 const router = express.Router();
 
 // Book routes
 router.get('/books/search', searchBook); //must be before and :bid routes
+router.get('/books/google-search', searchGoogleBooks);
 router.get('/books/:bid', getBookById);
 router.get('/books', getBooks);
 

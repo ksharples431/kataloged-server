@@ -1,6 +1,7 @@
 import HttpError from '../../models/httpErrorModel.js';
 import { createBookSchema, updateBookSchema } from './bookModel.js';
 import { buildGoogleQuery } from './helpers/searchHelpers.js';
+import { sortBooks } from './helpers/sortingHelpers.js'; 
 import {
   validateInput,
   validateSortOptions,
@@ -49,13 +50,11 @@ export const getBookById = async (req, res, next) => {
 
 export const getBooks = async (req, res, next) => {
   try {
-    const { sortBy = 'title', order = 'asc', full = 'false' } = req.query;
+    const { sortBy = 'title', order = 'asc' } = req.query;
     validateSortOptions(sortBy, order);
     let books = await fetchAllBooks(sortBy, order);
 
-    if (full.toLowerCase() !== 'true') {
-      books = books.map(formatBookCoverResponse);
-    }
+    books = books.map(formatBookCoverResponse);
 
     res.status(200).json({
       data: {
@@ -71,7 +70,6 @@ export const getBooks = async (req, res, next) => {
         new HttpError('Failed to fetch books', 500, 'FETCH_BOOKS_ERROR', {
           sortBy,
           order,
-          full,
         })
       );
     }
@@ -156,17 +154,10 @@ export const deleteBook = async (req, res, next) => {
 
 export const searchBook = async (req, res, next) => {
   try {
-    const { title, author, isbn } = req.query;
-    validateSearchParams({ title, author, isbn });
+    const { query } = req.query;
+    validateSearchParams({ query });
 
-    let books = await searchBooksInDatabase({ title, author, isbn });
-
-    if (books.length === 0) {
-      const googleQuery = buildGoogleQuery({ title, author, isbn });
-      books = await searchBooksInGoogleAPI(googleQuery);
-    }
-
-    books = books.map(formatBookDetailsResponse);
+    let books = await searchBooksInDatabase({ query });
 
     res.status(200).json({
       data: {
@@ -175,17 +166,37 @@ export const searchBook = async (req, res, next) => {
       },
     });
   } catch (error) {
-    if (error instanceof HttpError) {
-      next(error);
-    } else {
-      next(
-        new HttpError(
-          'Failed to search books',
-          500,
-          'SEARCH_BOOKS_ERROR',
-          { searchParams: req.query }
-        )
-      );
-    }
+      console.error('Search error:', error);
+    next(
+      new HttpError('Failed to search books', 500, 'SEARCH_BOOKS_ERROR', {
+        searchParams: req.query,
+      })
+    );
+  }
+};
+
+export const searchGoogleBooks = async (req, res, next) => {
+  try {
+    const { query } = req.query;
+    validateSearchParams({ query });
+
+    const googleQuery = buildGoogleQuery({ query });
+    let books = await searchBooksInGoogleAPI(googleQuery);
+
+    res.status(200).json({
+      data: {
+        message: books.length > 0 ? 'Books found' : 'No books found',
+        books,
+      },
+    });
+  } catch (error) {
+    next(
+      new HttpError(
+        'Failed to search Google Books',
+        500,
+        'GOOGLE_SEARCH_ERROR',
+        { searchParams: req.query }
+      )
+    );
   }
 };

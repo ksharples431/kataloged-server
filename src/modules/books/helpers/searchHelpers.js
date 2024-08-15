@@ -69,7 +69,6 @@ export const executeQuery = async (query) => {
   }
 };
 
-
 export const buildGoogleQuery = ({ title, author, isbn }) => {
   if (isbn) {
     return `isbn:${isbn}`;
@@ -139,4 +138,31 @@ export const processApiResponse = (data) => {
       { data }
     );
   }
+};
+
+export const buildGeneralSearchQuery = (query) => {
+  const lowercaseQuery = query.toLowerCase();
+  return bookCollection
+    .where('lowercaseTitle', '>=', lowercaseQuery)
+    .where('lowercaseTitle', '<=', lowercaseQuery + '\uf8ff')
+    .limit(10)
+    .get()
+    .then(async (titleSnapshot) => {
+      let results = titleSnapshot.docs.map((doc) => doc.data());
+
+      const authorSnapshot = await bookCollection
+        .where('lowercaseAuthor', '>=', lowercaseQuery)
+        .where('lowercaseAuthor', '<=', lowercaseQuery + '\uf8ff')
+        .limit(10)
+        .get();
+
+      results = results.concat(
+        authorSnapshot.docs.map((doc) => doc.data())
+      );
+
+      // Remove duplicates (in case a book matches both by title and author)
+      return Array.from(new Set(results.map(JSON.stringify))).map(
+        JSON.parse
+      );
+    });
 };

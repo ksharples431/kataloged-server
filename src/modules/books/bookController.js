@@ -1,15 +1,17 @@
 import HttpError from '../../models/httpErrorModel.js';
 import { createBookSchema, updateBookSchema } from './bookModel.js';
 import { buildGoogleQuery } from './helpers/searchHelpers.js';
-import { sortBooks } from './helpers/sortingHelpers.js'; 
+
 import {
   validateInput,
   validateSortOptions,
   validateSearchParams,
+  validateGeneralSearchParams,
 } from './helpers/validationHelpers.js';
 import {
   searchBooksInDatabase,
   searchBooksInGoogleAPI,
+  searchDatabaseGeneral,
 } from './services/searchService.js';
 import {
   formatBookCoverResponse,
@@ -198,5 +200,35 @@ export const searchGoogleBooks = async (req, res, next) => {
         { searchParams: req.query }
       )
     );
+  }
+};
+
+export const generalSearch = async (req, res, next) => {
+  try {
+    const { query } = req.query;
+    validateGeneralSearchParams(query);
+    let results = await searchDatabaseGeneral(query);
+
+    res.status(200).json({
+      data: {
+        message: results.length > 0 ? 'Books found' : 'No books found',
+        books: results,
+      },
+    });
+  } catch (error) {
+    if (error instanceof HttpError) {
+      next(error);
+    } else {
+      next(
+        new HttpError(
+          'Failed to perform general search',
+          500,
+          'GENERAL_SEARCH_ERROR',
+          {
+            query: req.query.query,
+          }
+        )
+      );
+    }
   }
 };

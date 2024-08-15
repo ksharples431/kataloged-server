@@ -64,3 +64,13 @@ export const validateGoogleQuery = (googleQuery) => {
     );
   }
 };
+
+export const validateGeneralSearchParams = (query) => {
+  if (!query || query.trim().length === 0) {
+    throw new HttpError(
+      'Search query cannot be empty',
+      400,
+      'INVALID_SEARCH_QUERY'
+    );
+  }
+};

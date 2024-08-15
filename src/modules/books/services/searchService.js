@@ -2,10 +2,12 @@ import HttpError from '../../../models/httpErrorModel.js';
 import {
   validateSearchParams,
   validateGoogleQuery,
+  validateGeneralSearchParams,
 } from '../helpers/validationHelpers.js';
 import {
   buildQuery,
   executeQuery,
+  buildGeneralSearchQuery,
   buildRequestConfig,
   fetchBooksFromGoogleAPI,
   processApiResponse,
@@ -47,3 +49,19 @@ export const searchBooksInGoogleAPI = async (
     );
   }
 };
+
+export async function searchDatabaseGeneral(query) {
+  try {
+    validateGeneralSearchParams(query);
+    const searchQuery = buildGeneralSearchQuery(query);
+    return await executeQuery(searchQuery);
+  } catch (error) {
+    if (error instanceof HttpError) throw error;
+    throw new HttpError(
+      'Error performing general search in database',
+      500,
+      'GENERAL_SEARCH_ERROR',
+      { query }
+    );
+  }
+}

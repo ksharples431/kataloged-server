@@ -55,16 +55,6 @@ export const validateSearchParams = ({ title, author, isbn }) => {
   }
 };
 
-export const validateGoogleQuery = (googleQuery) => {
-  if (!googleQuery) {
-    throw new HttpError(
-      'Invalid search criteria',
-      400,
-      'INVALID_GOOGLE_QUERY'
-    );
-  }
-};
-
 export const validateGeneralSearchParams = (query) => {
   if (!query || query.trim().length === 0) {
     throw new HttpError(

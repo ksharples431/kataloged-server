@@ -7,66 +7,32 @@ const bookCollection = db.collection('books');
 const GOOGLE_BOOKS_API_URL = process.env.GOOGLE_BOOKS_API_URL;
 const MAX_RESULTS = 20;
 
-export const buildQueryForISBN = (query, isbn) => {
-  return query.where('isbn', '==', isbn);
-};
-
-export const buildQueryForTitleAndAuthor = (query, title, author) => {
-  const titleLower = title.toLowerCase();
-  const authorLower = author.toLowerCase();
-  return query
-    .where('lowercaseTitle', '>=', titleLower)
-    .where('lowercaseTitle', '<', titleLower + '\uf8ff')
-    .where('lowercaseAuthor', '>=', authorLower)
-    .where('lowercaseAuthor', '<', authorLower + '\uf8ff');
-};
-
-export const buildQueryForTitle = (query, title) => {
-  const titleLower = title.toLowerCase();
-  return query
-    .where('lowercaseTitle', '>=', titleLower)
-    .where('lowercaseTitle', '<', titleLower + '\uf8ff');
-};
-
-export const buildQueryForAuthor = (query, author) => {
-  const authorLower = author.toLowerCase();
-  return query
-    .where('lowercaseAuthor', '>=', authorLower)
-    .where('lowercaseAuthor', '<', authorLower + '\uf8ff');
-};
-
-export const buildQuery = (searchParams) => {
+export const buildQuery = ({ title, author, isbn }) => {
   let query = bookCollection;
 
-  if (searchParams.isbn) {
-    return buildQueryForISBN(query, searchParams.isbn);
-  } else if (searchParams.title && searchParams.author) {
-    return buildQueryForTitleAndAuthor(
-      query,
-      searchParams.title,
-      searchParams.author
-    );
-  } else if (searchParams.title) {
-    return buildQueryForTitle(query, searchParams.title);
-  } else if (searchParams.author) {
-    return buildQueryForAuthor(query, searchParams.author);
+  if (isbn) {
+    return query.where('isbn', '==', isbn);
+  } else if (title && author) {
+    const titleLower = title.toLowerCase();
+    const authorLower = author.toLowerCase();
+    return query
+      .where('lowercaseTitle', '>=', titleLower)
+      .where('lowercaseTitle', '<', titleLower + '\uf8ff')
+      .where('lowercaseAuthor', '>=', authorLower)
+      .where('lowercaseAuthor', '<', authorLower + '\uf8ff');
+  } else if (title) {
+    const titleLower = title.toLowerCase();
+    return query
+      .where('lowercaseTitle', '>=', titleLower)
+      .where('lowercaseTitle', '<', titleLower + '\uf8ff');
+  } else if (author) {
+    const authorLower = author.toLowerCase();
+    return query
+      .where('lowercaseAuthor', '>=', authorLower)
+      .where('lowercaseAuthor', '<', authorLower + '\uf8ff');
   }
 
   return query;
-};
-
-export const executeQuery = async (query) => {
-  try {
-    const snapshot = await query.get();
-    return snapshot.docs.map((doc) => doc.data());
-  } catch (error) {
-    throw new HttpError(
-      'Error searching books in database',
-      500,
-      'DATABASE_QUERY_ERROR',
-      { query: query.toString() }
-    );
-  }
 };
 
 export const buildGoogleQuery = ({ title, author, isbn }) => {
@@ -85,6 +51,59 @@ export const buildGoogleQuery = ({ title, author, isbn }) => {
     'INVALID_SEARCH_PARAMS',
     { title, author, isbn }
   );
+};
+
+export const buildGeneralSearchQuery = (query) => {
+  const lowercaseQuery = query.toLowerCase();
+  return new Promise(async (resolve, reject) => {
+    try {
+      const titleSnapshot = await bookCollection
+        .where('lowercaseTitle', '>=', lowercaseQuery)
+        .where('lowercaseTitle', '<=', lowercaseQuery + '\uf8ff')
+        .get();
+
+      const authorSnapshot = await bookCollection
+        .where('lowercaseAuthor', '>=', lowercaseQuery)
+        .where('lowercaseAuthor', '<=', lowercaseQuery + '\uf8ff')
+        .get();
+
+      let results = [
+        ...titleSnapshot.docs.map((doc) => doc.data()),
+        ...authorSnapshot.docs.map((doc) => doc.data()),
+      ];
+
+      // Remove duplicates
+      results = Array.from(new Set(results.map(JSON.stringify))).map(
+        JSON.parse
+      );
+
+      resolve(results);
+    } catch (error) {
+      reject(error);
+    }
+  });
+};
+
+export const executeQuery = async (query) => {
+  try {
+    if (query instanceof Promise) {
+      // If query is a Promise (as in the case of buildGeneralSearchQuery), await it
+      const snapshot = await query;
+      return snapshot;
+    } else {
+      // If query is a Firestore Query object, execute get() and return the result
+      const snapshot = await query.get();
+      return snapshot.docs.map((doc) => doc.data());
+    }
+  } catch (error) {
+    console.error('Error executing query:', error);
+    throw new HttpError(
+      'Error searching books in database',
+      500,
+      'DATABASE_QUERY_ERROR',
+      { error: error.message }
+    );
+  }
 };
 
 export const buildRequestConfig = (googleQuery) => {
@@ -138,31 +157,4 @@ export const processApiResponse = (data) => {
       { data }
     );
   }
-};
-
-export const buildGeneralSearchQuery = (query) => {
-  const lowercaseQuery = query.toLowerCase();
-  return bookCollection
-    .where('lowercaseTitle', '>=', lowercaseQuery)
-    .where('lowercaseTitle', '<=', lowercaseQuery + '\uf8ff')
-    .limit(10)
-    .get()
-    .then(async (titleSnapshot) => {
-      let results = titleSnapshot.docs.map((doc) => doc.data());
-
-      const authorSnapshot = await bookCollection
-        .where('lowercaseAuthor', '>=', lowercaseQuery)
-        .where('lowercaseAuthor', '<=', lowercaseQuery + '\uf8ff')
-        .limit(10)
-        .get();
-
-      results = results.concat(
-        authorSnapshot.docs.map((doc) => doc.data())
-      );
-
-      // Remove duplicates (in case a book matches both by title and author)
-      return Array.from(new Set(results.map(JSON.stringify))).map(
-        JSON.parse
-      );
-    });
 };

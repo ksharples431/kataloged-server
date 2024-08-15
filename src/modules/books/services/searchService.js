@@ -1,7 +1,7 @@
 import HttpError from '../../../models/httpErrorModel.js';
+import db from '../../../config/firebaseConfig.js';
 import {
   validateSearchParams,
-  validateGoogleQuery,
   validateGeneralSearchParams,
 } from '../helpers/validationHelpers.js';
 import {
@@ -12,6 +12,10 @@ import {
   fetchBooksFromGoogleAPI,
   processApiResponse,
 } from '../helpers/searchHelpers.js';
+
+import { fetchUserBooks } from '../../userBooks/services/userBookService.js';
+import { combineBooksData } from '../../userBooks/services/combineBooksService.js';
+import { formatUserBookDetailsResponse } from '../../userBooks/helpers/utilityHelpers.js';
 
 export async function searchBooksInDatabase(searchParams) {
   try {
@@ -34,7 +38,6 @@ export const searchBooksInGoogleAPI = async (
   maxResults = 20
 ) => {
   try {
-    validateGoogleQuery(googleQuery);
     const config = buildRequestConfig(googleQuery, maxResults);
     const data = await fetchBooksFromGoogleAPI(config);
     return processApiResponse(data);
@@ -54,14 +57,42 @@ export async function searchDatabaseGeneral(query) {
   try {
     validateGeneralSearchParams(query);
     const searchQuery = buildGeneralSearchQuery(query);
-    return await executeQuery(searchQuery);
+    const results = await executeQuery(searchQuery);
+    return results;
   } catch (error) {
+    console.error('Error in searchDatabaseGeneral:', error);
     if (error instanceof HttpError) throw error;
     throw new HttpError(
       'Error performing general search in database',
       500,
       'GENERAL_SEARCH_ERROR',
-      { query }
+      { query, error: error.message }
+    );
+  }
+}
+
+export async function searchUserBooksByBids(uid, bids) {
+  try {
+    // Fetch all user books
+    const allUserBooks = await fetchUserBooks(uid);
+
+    // Filter user books based on the bids from search results
+    const matchedUserBooks = allUserBooks.filter((userBook) =>
+      bids.includes(userBook.bid)
+    );
+
+    console.log(
+      `Found ${matchedUserBooks.length} matching user books out of ${allUserBooks.length} total user books for uid: ${uid}`
+    );
+
+    return matchedUserBooks;
+  } catch (error) {
+    console.error('Error searching user books by bids:', error);
+    throw new HttpError(
+      'Error searching user books',
+      500,
+      'USER_BOOKS_SEARCH_ERROR',
+      { uid, bids, error: error.message }
     );
   }
 }

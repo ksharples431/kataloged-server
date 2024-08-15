@@ -1,7 +1,6 @@
 import HttpError from '../../models/httpErrorModel.js';
 import { createBookSchema, updateBookSchema } from './bookModel.js';
 import { buildGoogleQuery } from './helpers/searchHelpers.js';
-
 import {
   validateInput,
   validateSortOptions,
@@ -12,6 +11,7 @@ import {
   searchBooksInDatabase,
   searchBooksInGoogleAPI,
   searchDatabaseGeneral,
+  searchUserBooksByBids,
 } from './services/searchService.js';
 import {
   formatBookCoverResponse,
@@ -24,6 +24,8 @@ import {
   updateBookHelper,
   deleteBookHelper,
 } from './services/bookService.js';
+
+
 
 export const getBookById = async (req, res, next) => {
   try {
@@ -156,10 +158,10 @@ export const deleteBook = async (req, res, next) => {
 
 export const searchBook = async (req, res, next) => {
   try {
-    const { query } = req.query;
-    validateSearchParams({ query });
+    const { title, author, isbn } = req.query;
+    validateSearchParams({ title, author, isbn });
 
-    let books = await searchBooksInDatabase({ query });
+    let books = await searchBooksInDatabase({ title, author, isbn });
 
     res.status(200).json({
       data: {
@@ -168,7 +170,6 @@ export const searchBook = async (req, res, next) => {
       },
     });
   } catch (error) {
-      console.error('Search error:', error);
     next(
       new HttpError('Failed to search books', 500, 'SEARCH_BOOKS_ERROR', {
         searchParams: req.query,
@@ -179,10 +180,10 @@ export const searchBook = async (req, res, next) => {
 
 export const searchGoogleBooks = async (req, res, next) => {
   try {
-    const { query } = req.query;
-    validateSearchParams({ query });
+    const { title, author, isbn } = req.query;
+    validateSearchParams({ title, author, isbn });
 
-    const googleQuery = buildGoogleQuery({ query });
+    const googleQuery = buildGoogleQuery({ title, author, isbn });
     let books = await searchBooksInGoogleAPI(googleQuery);
 
     res.status(200).json({
@@ -205,14 +206,27 @@ export const searchGoogleBooks = async (req, res, next) => {
 
 export const generalSearch = async (req, res, next) => {
   try {
-    const { query } = req.query;
+    const { query, uid } = req.query;
+
     validateGeneralSearchParams(query);
-    let results = await searchDatabaseGeneral(query);
+
+    // Search for all books
+    let allBooks = await searchDatabaseGeneral(query);
+    allBooks = allBooks.map(formatBookCoverResponse);
+
+    let userBooks = [];
+    if (uid && allBooks.length > 0) {
+      // Only search for user books if a uid is provided and books were found
+      const bids = allBooks.map((book) => book.bid);
+      userBooks = await searchUserBooksByBids(uid, bids);
+
+    }
 
     res.status(200).json({
       data: {
-        message: results.length > 0 ? 'Books found' : 'No books found',
-        books: results,
+        message: allBooks.length > 0 ? 'Books found' : 'No books found',
+        allBooks,
+        userBooks,
       },
     });
   } catch (error) {
@@ -226,9 +240,10 @@ export const generalSearch = async (req, res, next) => {
           'GENERAL_SEARCH_ERROR',
           {
             query: req.query.query,
+
           }
         )
-      );
+      );  
     }
   }
 };

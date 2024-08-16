@@ -159,3 +159,18 @@ export const deleteBookHelper = async (bid) => {
     );
   }
 };
+
+export const checkBookExistsHelper = async (bid) => {
+  try {
+    const bookDoc = await bookCollection.doc(bid).get();
+    return bookDoc.exists ? bookDoc.data() : null;
+  } catch (error) {
+    console.error('Error checking if book exists:', error);
+    throw new HttpError(
+      'Failed to check book existence',
+      500,
+      'CHECK_BOOK_ERROR',
+      { bid }
+    );
+  }
+};

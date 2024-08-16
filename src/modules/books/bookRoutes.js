@@ -8,7 +8,8 @@ import {
   deleteBook,
   searchBook,
   generalSearch,
-  searchGoogleBooks
+  searchGoogleBooks, 
+  checkBookExists
 } from './bookController.js';
 
 const router = express.Router();
@@ -17,6 +18,7 @@ const router = express.Router();
 router.get('/books/search', searchBook); //must be before and :bid routes
 router.get('/books/google-search', searchGoogleBooks);
 router.get('/books/general-search', generalSearch);
+router.get('/books/check/:bid', checkBookExists);
 router.get('/books/:bid', getBookById);
 router.get('/books', getBooks);
 

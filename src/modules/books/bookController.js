@@ -23,6 +23,7 @@ import {
   createBookHelper,
   updateBookHelper,
   deleteBookHelper,
+  checkBookExistsHelper,
 } from './services/bookService.js';
 
 
@@ -244,6 +245,33 @@ export const generalSearch = async (req, res, next) => {
           }
         )
       );  
+    }
+  }
+};
+
+export const checkBookExists = async (req, res, next) => {
+  try {
+    const { bid } = req.params;
+    const book = await checkBookExistsHelper(bid);
+
+    res.status(200).json({
+      data: {
+        exists: !!book,
+        book: book,
+      },
+    });
+  } catch (error) {
+    if (error instanceof HttpError) {
+      next(error);
+    } else {
+      next(
+        new HttpError(
+          'Failed to check book existence',
+          500,
+          'CHECK_BOOK_ERROR',
+          { bid: req.params.bid }
+        )
+      );
     }
   }
 };

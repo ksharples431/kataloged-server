@@ -1,5 +1,5 @@
 import HttpError from '../../../models/httpErrorModel.js';
-//todo make this book specific and create same for author/genre
+
 export const removeCommonArticles = (title) => {
   const articlesRegex = /^(a |an |the )/i;
   return title.replace(articlesRegex, '').trim();
@@ -30,12 +30,6 @@ export const sortBooks = (books, sortBy, order) => {
           const dateA = new Date(a.updatedAtString);
           const dateB = new Date(b.updatedAtString);
           comparison = dateA.getTime() - dateB.getTime();
-          break;
-        case 'bookCount':
-          comparison = a.bookCount - b.bookCount;
-          break;
-        case 'genre':
-          comparison = a.genre.localeCompare(b.genre);
           break;
         default:
           throw new HttpError(

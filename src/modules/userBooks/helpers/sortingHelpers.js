@@ -27,14 +27,9 @@ export const sortUserBooks = (userBooks, sortBy, order) => {
           comparison = aLastName.localeCompare(bLastName);
           break;
         case 'updatedAt':
-          const dateA = a.updatedAtString;
-          const dateB = b.updatedAtString;
-          if (!isNaN(dateA) && !isNaN(dateB)) {
-            comparison = dateA - dateB;
-          }
-          break;
-        case 'genre':
-          comparison = a.genre.localeCompare(b.genre);
+          const dateA = new Date(a.updatedAtString);
+          const dateB = new Date(b.updatedAtString);
+          comparison = dateA.getTime() - dateB.getTime();
           break;
         default:
           throw new HttpError(
@@ -51,14 +46,9 @@ export const sortUserBooks = (userBooks, sortBy, order) => {
     return userBooks.sort(compareFunction);
   } catch (error) {
     if (error instanceof HttpError) throw error;
-    throw new HttpError(
-      'Error sorting user books',
-      500,
-      'USERBOOK_SORTING_ERROR',
-      {
-        sortBy,
-        order,
-      }
-    );
+    throw new HttpError('Error sorting user books', 500, 'USERBOOK_SORTING_ERROR', {
+      sortBy,
+      order,
+    });
   }
 };

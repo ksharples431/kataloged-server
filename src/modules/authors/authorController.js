@@ -1,18 +1,40 @@
+import HttpError from '../../models/httpErrorModel.js';
+import { authorService } from './services/authorService.js';
+import { validateSortOptions } from './helpers/validationHelpers.js';
+import { sortAuthors } from './helpers/sortingHelpers.js';
+
 export const getAuthors = async (req, res, next) => {
   try {
-    const { sortBy = 'author', order = 'asc' } = req.query;
+    const { sortBy = 'name', order = 'asc' } = req.query;
 
     validateSortOptions(sortBy, order);
 
-    let authors = await mapAuthorsFromBooks();
-    authors = sortBooks(authors, sortBy, order);
+    let authors = await authorService.mapAuthorsFromBooks();
+    authors = sortAuthors(authors, sortBy, order);
 
     res.status(200).json({
-      message: 'Authors fetched successfully',
-      authors,
+      data: {
+        message: 'Authors fetched successfully',
+        authors,
+      },
     });
   } catch (error) {
-    next(error);
+    if (error instanceof HttpError) {
+      next(error);
+    } else {
+      next(
+        new HttpError(
+          'Failed to fetch authors',
+          500,
+          'FETCH_AUTHORS_ERROR',
+          {
+            sortBy: req.query.sortBy,
+            order: req.query.order,
+            error: error.message,
+          }
+        )
+      );
+    }
   }
 };
 
@@ -22,13 +44,32 @@ export const getBooksByAuthor = async (req, res, next) => {
     const { sortBy = 'title', order = 'asc' } = req.query;
     validateSortOptions(sortBy, order);
 
-    let books = await mapAuthorBooks(author);
-    books = sortBooks(books, sortBy, order);
+    let authorBooks = await authorService.mapAuthorBooks(author);
+    authorBooks = sortAuthors(authorBooks, sortBy, order);
 
-    res
-      .status(200)
-      .json({ message: 'Books by author fetched successfully', books });
+    res.status(200).json({
+      data: {
+        message: 'Books by author fetched successfully',
+        books: authorBooks,
+      },
+    });
   } catch (error) {
-    next(error);
+    if (error instanceof HttpError) {
+      next(error);
+    } else {
+      next(
+        new HttpError(
+          'Failed to fetch books by author',
+          500,
+          'FETCH_AUTHOR_BOOKS_ERROR',
+          {
+            author,
+            sortBy: req.query.sortBy,
+            order: req.query.order,
+            error: error.message,
+          }
+        )
+      );
+    }
   }
 };

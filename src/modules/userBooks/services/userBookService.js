@@ -62,8 +62,8 @@ export const fetchUserBooks = async (
     let userBooks = snapshot.docs.map((doc) => doc.data());
 
     userBooks = await combineBooksData(userBooks);
-    // return sortUserBooks(userBooks, sortBy, order);
-    return userBooks
+    userBooks = sortUserBooks(userBooks, sortBy, order);
+    return userBooks;
   } catch (error) {
     if (error instanceof HttpError) throw error;
     throw new HttpError(

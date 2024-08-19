@@ -1,17 +1,40 @@
+import HttpError from '../../models/httpErrorModel.js';
+import { genreService } from './services/genreService.js';
+import { validateSortOptions } from './helpers/validationHelpers.js';
+import { sortGenres } from './helpers/sortingHelpers.js';
+
 export const getGenres = async (req, res, next) => {
   try {
-    const { sortBy = 'genre', order = 'asc' } = req.query;
+    const { sortBy = 'name', order = 'asc' } = req.query;
 
     validateSortOptions(sortBy, order);
 
-    let genres = await mapGenresFromBooks();
-    genres = sortBooks(genres, sortBy, order);
+    let genres = await genreService.mapGenresFromBooks();
+    genres = sortGenres(genres, sortBy, order);
 
-    res
-      .status(200)
-      .json({ message: 'Genres fetched successfully', genres });
+    res.status(200).json({
+      data: {
+        message: 'Genres fetched successfully',
+        genres,
+      },
+    });
   } catch (error) {
-    next(error);
+    if (error instanceof HttpError) {
+      next(error);
+    } else {
+      next(
+        new HttpError(
+          'Failed to fetch genres',
+          500,
+          'FETCH_GENRES_ERROR',
+          {
+            sortBy: req.query.sortBy,
+            order: req.query.order,
+            error: error.message,
+          }
+        )
+      );
+    }
   }
 };
 
@@ -21,13 +44,32 @@ export const getBooksByGenre = async (req, res, next) => {
     const { sortBy = 'title', order = 'asc' } = req.query;
     validateSortOptions(sortBy, order);
 
-    let books = await mapGenreBooks(genre);
-    books = sortBooks(books, sortBy, order);
+    let genreBooks = await genreService.mapGenreBooks(genre);
+    genreBooks = sortGenres(genreBooks, sortBy, order);
 
-    res
-      .status(200)
-      .json({ message: 'Books by genres fetched successfully', books });
+    res.status(200).json({
+      data: {
+        message: 'Books by genre fetched successfully',
+        books: genreBooks,
+      },
+    });
   } catch (error) {
-    next(error);
+    if (error instanceof HttpError) {
+      next(error);
+    } else {
+      next(
+        new HttpError(
+          'Failed to fetch books by genre',
+          500,
+          'FETCH_GENRE_BOOKS_ERROR',
+          {
+            genre,
+            sortBy: req.query.sortBy,
+            order: req.query.order,
+            error: error.message,
+          }
+        )
+      );
+    }
   }
 };

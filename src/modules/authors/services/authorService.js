@@ -3,7 +3,7 @@ import HttpError from '../../../errors/httpErrorModel.js';
 import {
   generateAid,
   formatAuthorCoverResponse,
-} from '../helpers/utilityHelpers.js';
+} from '../authorHelpers.js';
 
 const bookCollection = db.collection('books');
 

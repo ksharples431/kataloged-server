@@ -3,11 +3,6 @@ import {
   ErrorCodes,
   HttpStatusCodes,
 } from '../../../errors/errorConstraints.js';
-import db from '../../../config/firebaseConfig.js';
-import {
-  validateSearchParams,
-  validateGeneralSearchParams,
-} from '../helpers/validationHelpers.js';
 import {
   buildQuery,
   executeQuery,
@@ -15,7 +10,9 @@ import {
   buildRequestConfig,
   fetchBooksFromGoogleAPI,
   processApiResponse,
-} from '../helpers/searchHelpers.js';
+  validateSearchParams,
+  validateGeneralSearchParams,
+} from '../bookHelpers.js';
 import { fetchUserBooks } from '../../userBooks/services/userBookService.js';
 import { logEntry } from '../../../config/cloudLoggingConfig.js';
 

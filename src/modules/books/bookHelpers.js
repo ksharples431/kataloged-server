@@ -80,7 +80,7 @@ export const formatBookCoverResponse = (book) => {
       'Invalid book object',
       HttpStatusCodes.INTERNAL_SERVER_ERROR,
       ErrorCodes.INVALID_INPUT,
-      { book }
+      { title: book.title }
     );
   }
   return {
@@ -97,7 +97,7 @@ export const formatBookDetailsResponse = (book) => {
       'Invalid book object',
       HttpStatusCodes.INTERNAL_SERVER_ERROR,
       ErrorCodes.INVALID_INPUT,
-      { book }
+      { title: book.title }
     );
   }
   return {
@@ -119,7 +119,7 @@ export const generateLowercaseFields = (book) => {
       'Invalid book object',
       HttpStatusCodes.INTERNAL_SERVER_ERROR,
       ErrorCodes.INVALID_INPUT,
-      { book }
+      { title: book.title }
     );
   }
   return {
@@ -135,7 +135,7 @@ export const generateBid = (item) => {
       'Invalid item for BID generation',
       HttpStatusCodes.INTERNAL_SERVER_ERROR,
       ErrorCodes.INVALID_INPUT,
-      { item }
+      { title: item.title }
     );
   }
   const uniqueString = `${item.id}-${item.etag}-${Date.now()}`;
@@ -352,7 +352,7 @@ export const mapBookItem = (item) => {
       'Invalid book item',
       HttpStatusCodes.INTERNAL_SERVER_ERROR,
       ErrorCodes.INVALID_INPUT,
-      { item }
+      { title: item.volumeInfo.title }
     );
   }
 

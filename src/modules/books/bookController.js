@@ -1,21 +1,18 @@
 import HttpError from '../../errors/httpErrorModel.js';
-import { buildGoogleQuery } from './helpers/searchHelpers.js';
 import {
-  validateInput,
   validateSortOptions,
   validateSearchParams,
   validateGeneralSearchParams,
-} from './helpers/validationHelpers.js';
+  formatBookCoverResponse,
+  formatBookDetailsResponse,
+  buildGoogleQuery,
+} from './bookHelpers.js';
 import {
   searchBooksInDatabase,
   searchBooksInGoogleAPI,
   searchDatabaseGeneral,
   searchUserBooksByBids,
 } from './services/searchService.js';
-import {
-  formatBookCoverResponse,
-  formatBookDetailsResponse,
-} from './helpers/utilityHelpers.js';
 import {
   fetchBookById,
   fetchAllBooks,

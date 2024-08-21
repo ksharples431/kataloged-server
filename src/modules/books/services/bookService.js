@@ -5,10 +5,7 @@ import {
   ErrorCodes,
   HttpStatusCodes,
 } from '../../../errors/errorConstraints.js';
-// import { sortBooks } from '../helpers/sortingHelpers.js';
-// import { validateSortOptions } from '../helpers/validationHelpers.js';
-// import { generateLowercaseFields } from '../helpers/utilityHelpers.js';
-import { generateLowercaseFields, validateSortOptions, sortBooks } from '../bookHelperFunctions.js'
+import { generateLowercaseFields, validateSortOptions, sortBooks } from '../bookHelpers.js'
 
 const bookCollection = db.collection('books');
 const userBookCollection = db.collection('userBooks');

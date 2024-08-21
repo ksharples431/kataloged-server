@@ -1,14 +1,13 @@
 import Joi from 'joi';
-//todo: double check data going both directions
-//todo: transform incoming data so i dont have to accept id
+
 export const addUserBookSchema = Joi.object({
   bid: Joi.string().required(),
   uid: Joi.string().required(),
-  kataloged: Joi.boolean(),
+  kataloged: Joi.boolean().default(false),
   updatedAtString: Joi.date().iso(),
 
   id: Joi.string().optional(),
-});
+}).unknown(false);
 
 export const updateUserBookSchema = Joi.object({
   author: Joi.string(),
@@ -16,7 +15,7 @@ export const updateUserBookSchema = Joi.object({
   favorite: Joi.boolean(),
   format: Joi.string(),
   genre: Joi.string(),
-  imagePath: Joi.string(),
+  imagePath: Joi.string().uri(),
   isbn: Joi.string(),
   kataloged: Joi.boolean(),
   owned: Joi.boolean(),
@@ -31,4 +30,13 @@ export const updateUserBookSchema = Joi.object({
   bid: Joi.string().forbidden(),
   uid: Joi.string().forbidden(),
   id: Joi.string(),
+}).unknown(false);
+
+export const getUserBooksQuerySchema = Joi.object({
+  uid: Joi.string().required(),
+  sortBy: Joi.string()
+    .valid('title', 'author', 'updatedAt')
+    .default('title'),
+  order: Joi.string().valid('asc', 'desc').default('asc'),
+  full: Joi.boolean().default(false),
 });

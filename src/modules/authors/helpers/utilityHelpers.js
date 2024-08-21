@@ -1,5 +1,5 @@
 import hashSum from 'hash-sum';
-import HttpError from '../../../models/httpErrorModel.js';
+import HttpError from '../../../errors/httpErrorModel.js';
 
 export const formatAuthorCoverResponse = (book) => {
   try {

@@ -1,6 +1,6 @@
 import firebase from 'firebase-admin';
 import db from '../../../config/firebaseConfig.js';
-import HttpError from '../../../models/httpErrorModel.js';
+import HttpError from '../../../errors/httpErrorModel.js';
 
 const userCollection = db.collection('users');
 
@@ -44,4 +44,3 @@ export const createUser = async (uid, { username, email }) => {
 
   return fetchUserById(uid);
 };
-

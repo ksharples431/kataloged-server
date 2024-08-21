@@ -1,20 +1,28 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-//todo see if this works
-import addRequestId from 'express-request-id'; 
+import addRequestId from 'express-request-id';
+
+import {
+  errorMiddleware,
+  notFound,
+} from './middleware/errorMiddleware.js';
+import {
+  apiLimiter,
+  authLimiter,
+} from './middleware/rateLimitMiddleware.js';
+import { asyncRouteHandler } from './errors/errorHandler.js';
+import { logEntry } from './config/cloudLoggingConfig.js';
+// import { setHeaders } from './middleware/headersMiddleware.js';
 import authRoutes from './modules/auth/authRoutes.js';
-import authorRoutes from './modules/authors/authorRoutes.js';
 import bookRoutes from './modules/books/bookRoutes.js';
+import userRoutes from './modules/users/userRoutes.js';
 import genreRoutes from './modules/genres/genreRoutes.js';
-import userAuthorRoutes from './modules/userAuthors/userAuthorRoutes.js';
+import authorRoutes from './modules/authors/authorRoutes.js';
 import userBookRoutes from './modules/userBooks/userBookRoutes.js';
 import userGenreRoutes from './modules/userGenres/userGenreRoutes.js';
-import userRoutes from './modules/users/userRoutes.js';
-import { notFound, errorHandler } from './middleware/errorMiddleware.js';
-import { setHeaders } from './middleware/headersMiddleware.js';
+import userAuthorRoutes from './modules/userAuthors/userAuthorRoutes.js';
 
-//todo check on order of middleware items
 dotenv.config();
 
 const app = express();
@@ -22,7 +30,7 @@ const app = express();
 app.use(addRequestId());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(setHeaders);
+// app.use(setHeaders);
 
 const allowedOrigins = ['https://kataloged.com', 'http://localhost:5173'];
 
@@ -42,6 +50,24 @@ app.use(
 );
 app.options('*', cors());
 
+// Apply rate limiting to all routes
+app.use(apiLimiter);
+
+// Apply more stringent rate limiting to auth routes
+app.use('/api/auth', authLimiter);
+
+// Use asyncRouteHandler for logging incoming requests
+app.use(
+  asyncRouteHandler(async (req, res, next) => {
+    await logEntry({
+      severity: 'INFO',
+      message: `Incoming request: ${req.method} ${req.url}`,
+      requestId: req.id,
+    });
+    next();
+  })
+);
+
 app.use('/api', authRoutes);
 app.use('/api', authorRoutes);
 app.use('/api', bookRoutes);
@@ -52,6 +78,6 @@ app.use('/api', userGenreRoutes);
 app.use('/api', userRoutes);
 
 app.use(notFound);
-app.use(errorHandler);
+app.use(errorMiddleware);
 
 export default app;

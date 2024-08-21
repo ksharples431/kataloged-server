@@ -1,12 +1,7 @@
-import HttpError from '../../../models/httpErrorModel.js';
+import HttpError from '../../../errors/httpErrorModel.js';
 
 export const validateSortOptions = (sortBy, order) => {
-  const validSortFields = [
-    'title',
-    'name',
-    'bookCount',
-    'updatedAt',
-  ];
+  const validSortFields = ['title', 'name', 'bookCount', 'updatedAt'];
   const validOrders = ['asc', 'desc'];
 
   if (!validSortFields.includes(sortBy)) {

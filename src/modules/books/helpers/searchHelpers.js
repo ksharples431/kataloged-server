@@ -1,7 +1,11 @@
 import db from '../../../config/firebaseConfig.js';
 import axios from 'axios';
-import HttpError from '../../../models/httpErrorModel.js';
+import HttpError from '../../../errors/httpErrorModel.js';
 import { mapBookItem } from '../helpers/mappingHelpers.js';
+import {
+  ErrorCodes,
+  HttpStatusCodes,
+} from '../../../errors/errorConstraints.js';
 
 const bookCollection = db.collection('books');
 const GOOGLE_BOOKS_API_URL = process.env.GOOGLE_BOOKS_API_URL;
@@ -47,8 +51,8 @@ export const buildGoogleQuery = ({ title, author, isbn }) => {
   }
   throw new HttpError(
     'Invalid search parameters',
-    400,
-    'INVALID_SEARCH_PARAMS',
+    HttpStatusCodes.BAD_REQUEST,
+    ErrorCodes.INVALID_INPUT,
     { title, author, isbn }
   );
 };
@@ -56,53 +60,39 @@ export const buildGoogleQuery = ({ title, author, isbn }) => {
 export const buildGeneralSearchQuery = (query) => {
   const lowercaseQuery = query.toLowerCase();
   return new Promise(async (resolve, reject) => {
-    try {
-      const titleSnapshot = await bookCollection
-        .where('lowercaseTitle', '>=', lowercaseQuery)
-        .where('lowercaseTitle', '<=', lowercaseQuery + '\uf8ff')
-        .get();
+    const titleSnapshot = await bookCollection
+      .where('lowercaseTitle', '>=', lowercaseQuery)
+      .where('lowercaseTitle', '<=', lowercaseQuery + '\uf8ff')
+      .get();
 
-      const authorSnapshot = await bookCollection
-        .where('lowercaseAuthor', '>=', lowercaseQuery)
-        .where('lowercaseAuthor', '<=', lowercaseQuery + '\uf8ff')
-        .get();
+    const authorSnapshot = await bookCollection
+      .where('lowercaseAuthor', '>=', lowercaseQuery)
+      .where('lowercaseAuthor', '<=', lowercaseQuery + '\uf8ff')
+      .get();
 
-      let results = [
-        ...titleSnapshot.docs.map((doc) => doc.data()),
-        ...authorSnapshot.docs.map((doc) => doc.data()),
-      ];
+    let results = [
+      ...titleSnapshot.docs.map((doc) => doc.data()),
+      ...authorSnapshot.docs.map((doc) => doc.data()),
+    ];
 
-      // Remove duplicates
-      results = Array.from(new Set(results.map(JSON.stringify))).map(
-        JSON.parse
-      );
+    // Remove duplicates
+    results = Array.from(new Set(results.map(JSON.stringify))).map(
+      JSON.parse
+    );
 
-      resolve(results);
-    } catch (error) {
-      reject(error);
-    }
+    resolve(results);
   });
 };
 
 export const executeQuery = async (query) => {
-  try {
-    if (query instanceof Promise) {
-      // If query is a Promise (as in the case of buildGeneralSearchQuery), await it
-      const snapshot = await query;
-      return snapshot;
-    } else {
-      // If query is a Firestore Query object, execute get() and return the result
-      const snapshot = await query.get();
-      return snapshot.docs.map((doc) => doc.data());
-    }
-  } catch (error) {
-    console.error('Error executing query:', error);
-    throw new HttpError(
-      'Error searching books in database',
-      500,
-      'DATABASE_QUERY_ERROR',
-      { error: error.message }
-    );
+  if (query instanceof Promise) {
+    // If query is a Promise (as in the case of buildGeneralSearchQuery), await it
+    const snapshot = await query;
+    return snapshot;
+  } else {
+    // If query is a Firestore Query object, execute get() and return the result
+    const snapshot = await query.get();
+    return snapshot.docs.map((doc) => doc.data());
   }
 };
 
@@ -127,15 +117,15 @@ export const fetchBooksFromGoogleAPI = async (config) => {
     if (axios.isAxiosError(error)) {
       throw new HttpError(
         'Google Books API Error',
-        error.response?.status || 500,
-        'GOOGLE_API_ERROR',
+        error.response?.status || HttpStatusCodes.INTERNAL_SERVER_ERROR,
+        ErrorCodes.API_REQUEST_FAILED,
         { message: error.message }
       );
     }
     throw new HttpError(
       'Unknown error occurred while fetching books from Google API',
-      500,
-      'UNKNOWN_GOOGLE_API_ERROR'
+      HttpStatusCodes.INTERNAL_SERVER_ERROR,
+      ErrorCodes.UNEXPECTED_ERROR
     );
   }
 };
@@ -145,16 +135,7 @@ export const processApiResponse = (data) => {
     return [];
   }
 
-  try {
-    return data.items
-      .map(mapBookItem)
-      .filter((book) => book.imagePath && book.description);
-  } catch (error) {
-    throw new HttpError(
-      'Error processing API response',
-      500,
-      'API_RESPONSE_PROCESSING_ERROR',
-      { data }
-    );
-  }
+  return data.items
+    .map(mapBookItem)
+    .filter((book) => book.imagePath && book.description);
 };

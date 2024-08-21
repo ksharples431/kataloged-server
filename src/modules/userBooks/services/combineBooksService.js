@@ -1,5 +1,5 @@
 import { fetchBookById } from './userBookService.js';
-import HttpError from '../../../models/httpErrorModel.js';
+import HttpError from '../../../errors/httpErrorModel.js';
 
 const combineBookData = async (userBook) => {
   try {

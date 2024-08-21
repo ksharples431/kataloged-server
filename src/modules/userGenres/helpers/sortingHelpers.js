@@ -1,4 +1,4 @@
-import HttpError from '../../../models/httpErrorModel.js';
+import HttpError from '../../../errors/httpErrorModel.js';
 
 export const removeCommonArticles = (title) => {
   const articlesRegex = /^(a |an |the )/i;

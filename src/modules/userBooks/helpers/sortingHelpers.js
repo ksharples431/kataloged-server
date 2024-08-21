@@ -1,4 +1,4 @@
-import HttpError from '../../../models/httpErrorModel.js';
+import HttpError from '../../../errors/httpErrorModel.js';
 
 export const removeCommonArticles = (title) => {
   const articlesRegex = /^(a |an |the )/i;
@@ -46,9 +46,14 @@ export const sortUserBooks = (userBooks, sortBy, order) => {
     return userBooks.sort(compareFunction);
   } catch (error) {
     if (error instanceof HttpError) throw error;
-    throw new HttpError('Error sorting user books', 500, 'USERBOOK_SORTING_ERROR', {
-      sortBy,
-      order,
-    });
+    throw new HttpError(
+      'Error sorting user books',
+      500,
+      'USERBOOK_SORTING_ERROR',
+      {
+        sortBy,
+        order,
+      }
+    );
   }
 };

@@ -1,4 +1,4 @@
-import HttpError from '../../models/httpErrorModel.js';
+import HttpError from '../../errors/httpErrorModel.js';
 import { userAuthorService } from './services/userAuthorService.js';
 import { validateSortOptions } from './helpers/validationHelpers.js';
 import { sortAuthors } from './helpers/sortingHelpers.js';
@@ -7,13 +7,13 @@ export const getUserAuthors = async (req, res, next) => {
   try {
     const { uid } = req.params;
     const { sortBy = 'name', order = 'asc' } = req.query;
-    console.log(uid)
+    console.log(uid);
 
     validateSortOptions(sortBy, order);
 
     let authors = await userAuthorService.mapUserAuthorsFromBooks(uid);
     authors = sortAuthors(authors, sortBy, order);
-    console.log(authors)
+    console.log(authors);
 
     res.status(200).json({
       data: {

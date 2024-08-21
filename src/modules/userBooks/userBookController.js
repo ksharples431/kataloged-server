@@ -1,4 +1,4 @@
-import HttpError from '../../models/httpErrorModel.js';
+import HttpError from '../../errors/httpErrorModel.js';
 import {
   addUserBookSchema,
   updateUserBookSchema,
@@ -25,7 +25,7 @@ export const getUserBookById = async (req, res, next) => {
     const { ubid } = req.params;
     let userBook = await fetchUserBookById(ubid);
     userBook = formatUserBookDetailsResponse(userBook);
-    console.log(userBook)
+    console.log(userBook);
 
     res.status(200).json({
       data: {

@@ -1,4 +1,4 @@
-import HttpError from '../../models/httpErrorModel.js';
+import HttpError from '../../errors/httpErrorModel.js';
 import db from '../../config/firebaseConfig.js';
 import firebase from 'firebase-admin';
 

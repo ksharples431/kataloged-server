@@ -1,4 +1,8 @@
-import HttpError from '../../../models/httpErrorModel.js';
+import HttpError from '../../../errors/httpErrorModel.js';
+import {
+  ErrorCodes,
+  HttpStatusCodes,
+} from '../../../errors/errorConstraints.js';
 import db from '../../../config/firebaseConfig.js';
 import {
   validateSearchParams,
@@ -12,23 +16,30 @@ import {
   fetchBooksFromGoogleAPI,
   processApiResponse,
 } from '../helpers/searchHelpers.js';
-
 import { fetchUserBooks } from '../../userBooks/services/userBookService.js';
-import { combineBooksData } from '../../userBooks/services/combineBooksService.js';
-import { formatUserBookDetailsResponse } from '../../userBooks/helpers/utilityHelpers.js';
+import { logEntry } from '../../../config/cloudLoggingConfig.js';
 
 export async function searchBooksInDatabase(searchParams) {
   try {
     validateSearchParams(searchParams);
     const query = buildQuery(searchParams);
-    return await executeQuery(query);
+    const results = await executeQuery(query);
+
+    await logEntry({
+      message: `Database search performed`,
+      severity: 'INFO',
+      searchParams,
+      resultsCount: results.length,
+    });
+
+    return results;
   } catch (error) {
     if (error instanceof HttpError) throw error;
     throw new HttpError(
       'Error searching books in database',
-      500,
-      'DATABASE_SEARCH_ERROR',
-      { searchParams }
+      HttpStatusCodes.INTERNAL_SERVER_ERROR,
+      ErrorCodes.DATABASE_ERROR,
+      { searchParams, error: error.message }
     );
   }
 }
@@ -40,15 +51,24 @@ export const searchBooksInGoogleAPI = async (
   try {
     const config = buildRequestConfig(googleQuery, maxResults);
     const data = await fetchBooksFromGoogleAPI(config);
-    return processApiResponse(data);
+    const results = processApiResponse(data);
+
+    await logEntry({
+      message: `Google Books API search performed`,
+      severity: 'INFO',
+      googleQuery,
+      maxResults,
+      resultsCount: results.length,
+    });
+
+    return results;
   } catch (error) {
-    console.error('Error in Google Books API search:', error);
     if (error instanceof HttpError) throw error;
     throw new HttpError(
       'Error searching books in Google API',
-      500,
-      'GOOGLE_API_SEARCH_ERROR',
-      { googleQuery, maxResults, originalError: error.message }
+      HttpStatusCodes.INTERNAL_SERVER_ERROR,
+      ErrorCodes.API_REQUEST_FAILED,
+      { googleQuery, maxResults, error: error.message }
     );
   }
 };
@@ -58,14 +78,21 @@ export async function searchDatabaseGeneral(query) {
     validateGeneralSearchParams(query);
     const searchQuery = buildGeneralSearchQuery(query);
     const results = await executeQuery(searchQuery);
+
+    await logEntry({
+      message: `General database search performed`,
+      severity: 'INFO',
+      query,
+      resultsCount: results.length,
+    });
+
     return results;
   } catch (error) {
-    console.error('Error in searchDatabaseGeneral:', error);
     if (error instanceof HttpError) throw error;
     throw new HttpError(
       'Error performing general search in database',
-      500,
-      'GENERAL_SEARCH_ERROR',
+      HttpStatusCodes.INTERNAL_SERVER_ERROR,
+      ErrorCodes.DATABASE_ERROR,
       { query, error: error.message }
     );
   }
@@ -73,25 +100,25 @@ export async function searchDatabaseGeneral(query) {
 
 export async function searchUserBooksByBids(uid, bids) {
   try {
-    // Fetch all user books
     const allUserBooks = await fetchUserBooks(uid);
-
-    // Filter user books based on the bids from search results
     const matchedUserBooks = allUserBooks.filter((userBook) =>
       bids.includes(userBook.bid)
     );
 
-    console.log(
-      `Found ${matchedUserBooks.length} matching user books out of ${allUserBooks.length} total user books for uid: ${uid}`
-    );
+    await logEntry({
+      message: `User books search by BIDs performed`,
+      severity: 'INFO',
+      uid,
+      totalUserBooks: allUserBooks.length,
+      matchedUserBooks: matchedUserBooks.length,
+    });
 
     return matchedUserBooks;
   } catch (error) {
-    console.error('Error searching user books by bids:', error);
     throw new HttpError(
-      'Error searching user books',
-      500,
-      'USER_BOOKS_SEARCH_ERROR',
+      'Error searching user books by BIDs',
+      HttpStatusCodes.INTERNAL_SERVER_ERROR,
+      ErrorCodes.DATABASE_ERROR,
       { uid, bids, error: error.message }
     );
   }

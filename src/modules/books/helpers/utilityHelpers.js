@@ -1,86 +1,80 @@
 import hashSum from 'hash-sum';
-import HttpError from '../../../models/httpErrorModel.js';
+import HttpError from '../../../errors/httpErrorModel.js';
+import {
+  ErrorCodes,
+  HttpStatusCodes,
+} from '../../../errors/errorConstraints.js';
 
 export const formatBookCoverResponse = (book) => {
-  try {
-    return {
-      author: book.author,
-      bid: book.bid,
-      imagePath: book.imagePath,
-      title: book.title,
-    };
-  } catch (error) {
+  if (!book || typeof book !== 'object') {
     throw new HttpError(
-      'Error formatting book cover response',
-      500,
-      'BOOK_COVER_FORMAT_ERROR',
+      'Invalid book object',
+      HttpStatusCodes.INTERNAL_SERVER_ERROR,
+      ErrorCodes.INVALID_INPUT,
       { book }
     );
   }
+  return {
+    author: book.author,
+    bid: book.bid,
+    imagePath: book.imagePath,
+    title: book.title,
+  };
 };
 
 export const formatBookDetailsResponse = (book) => {
-  try {
-    return {
-      author: book.author,
-      bid: book.bid,
-      description: book.description,
-      genre: book.genre,
-      imagePath: book.imagePath,
-      isbn: book.isbn,
-      seriesName: book.seriesName,
-      seriesNumber: book.seriesNumber,
-      title: book.title,
-    };
-  } catch (error) {
+  if (!book || typeof book !== 'object') {
     throw new HttpError(
-      'Error formatting book details response',
-      500,
-      'BOOK_DETAILS_FORMAT_ERROR',
+      'Invalid book object',
+      HttpStatusCodes.INTERNAL_SERVER_ERROR,
+      ErrorCodes.INVALID_INPUT,
       { book }
     );
   }
+  return {
+    author: book.author,
+    bid: book.bid,
+    description: book.description,
+    genre: book.genre,
+    imagePath: book.imagePath,
+    isbn: book.isbn,
+    seriesName: book.seriesName,
+    seriesNumber: book.seriesNumber,
+    title: book.title,
+  };
 };
 
 export const generateLowercaseFields = (book) => {
-  try {
-    return {
-      ...book,
-      lowercaseTitle: book.title ? book.title.toLowerCase() : '',
-      lowercaseAuthor: book.author ? book.author.toLowerCase() : '',
-    };
-  } catch (error) {
+  if (!book || typeof book !== 'object') {
     throw new HttpError(
-      'Error generating lowercase fields',
-      500,
-      'LOWERCASE_FIELDS_ERROR',
+      'Invalid book object',
+      HttpStatusCodes.INTERNAL_SERVER_ERROR,
+      ErrorCodes.INVALID_INPUT,
       { book }
     );
   }
+  return {
+    ...book,
+    lowercaseTitle: book.title ? book.title.toLowerCase() : '',
+    lowercaseAuthor: book.author ? book.author.toLowerCase() : '',
+  };
 };
 
 export const generateBid = (item) => {
-  try {
-    const uniqueString = `${item.id}-${item.etag}-${Date.now()}`;
-    return hashSum(uniqueString).substring(0, 28);
-  } catch (error) {
+  if (!item || !item.id || !item.etag) {
     throw new HttpError(
-      'Error generating BID',
-      500,
-      'BID_GENERATION_ERROR',
+      'Invalid item for BID generation',
+      HttpStatusCodes.INTERNAL_SERVER_ERROR,
+      ErrorCodes.INVALID_INPUT,
       { item }
     );
   }
+  const uniqueString = `${item.id}-${item.etag}-${Date.now()}`;
+  return hashSum(uniqueString).substring(0, 28);
 };
 
 export const findISBN13 = (industryIdentifiers) => {
-  try {
-    if (!industryIdentifiers) return 'N/A';
-    const isbn13 = industryIdentifiers.find((id) => id.type === 'ISBN_13');
-    return isbn13 ? isbn13.identifier : 'N/A';
-  } catch (error) {
-    throw new HttpError('Error finding ISBN13', 500, 'ISBN13_FIND_ERROR', {
-      industryIdentifiers,
-    });
-  }
+  if (!industryIdentifiers) return 'N/A';
+  const isbn13 = industryIdentifiers.find((id) => id.type === 'ISBN_13');
+  return isbn13 ? isbn13.identifier : 'N/A';
 };

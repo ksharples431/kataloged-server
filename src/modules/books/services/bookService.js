@@ -1,8 +1,14 @@
 import db from '../../../config/firebaseConfig.js';
-import HttpError from '../../../models/httpErrorModel.js';
-import { sortBooks } from '../helpers/sortingHelpers.js';
-import { validateSortOptions } from '../helpers/validationHelpers.js';
-import { generateLowercaseFields } from '../helpers/utilityHelpers.js';
+import HttpError from '../../../errors/httpErrorModel.js';
+import { logEntry } from '../../../config/cloudLoggingConfig.js';
+import {
+  ErrorCodes,
+  HttpStatusCodes,
+} from '../../../errors/errorConstraints.js';
+// import { sortBooks } from '../helpers/sortingHelpers.js';
+// import { validateSortOptions } from '../helpers/validationHelpers.js';
+// import { generateLowercaseFields } from '../helpers/utilityHelpers.js';
+import { generateLowercaseFields, validateSortOptions, sortBooks } from '../bookHelperFunctions.js'
 
 const bookCollection = db.collection('books');
 const userBookCollection = db.collection('userBooks');
@@ -11,16 +17,29 @@ export const fetchBookById = async (bid) => {
   try {
     const bookDoc = await bookCollection.doc(bid).get();
     if (!bookDoc.exists) {
-      throw new HttpError('Book not found', 404, 'BOOK_NOT_FOUND', {
-        bid,
-      });
+      throw new HttpError(
+        'Book not found',
+        HttpStatusCodes.NOT_FOUND,
+        ErrorCodes.RESOURCE_NOT_FOUND,
+        { bid }
+      );
     }
+
+    await logEntry({
+      message: `Book fetched by ID`,
+      severity: 'INFO',
+      bid,
+    });
+
     return bookDoc.data();
   } catch (error) {
     if (error instanceof HttpError) throw error;
-    throw new HttpError('Failed to fetch book', 500, 'FETCH_BOOK_ERROR', {
-      bid,
-    });
+    throw new HttpError(
+      'Error fetching book',
+      HttpStatusCodes.INTERNAL_SERVER_ERROR,
+      ErrorCodes.DATABASE_ERROR,
+      { bid, error: error.message }
+    );
   }
 };
 
@@ -29,14 +48,24 @@ export const fetchAllBooks = async (sortBy = 'title', order = 'asc') => {
     validateSortOptions(sortBy, order);
     const snapshot = await bookCollection.get();
     let books = snapshot.docs.map((doc) => doc.data());
-    return sortBooks(books, sortBy, order);
+    const sortedBooks = sortBooks(books, sortBy, order);
+
+    await logEntry({
+      message: `All books fetched and sorted`,
+      severity: 'INFO',
+      sortBy,
+      order,
+      bookCount: sortedBooks.length,
+    });
+
+    return sortedBooks;
   } catch (error) {
     if (error instanceof HttpError) throw error;
     throw new HttpError(
-      'Failed to fetch books',
-      500,
-      'FETCH_BOOKS_ERROR',
-      { sortBy, order }
+      'Error fetching all books',
+      HttpStatusCodes.INTERNAL_SERVER_ERROR,
+      ErrorCodes.DATABASE_ERROR,
+      { sortBy, order, error: error.message }
     );
   }
 };
@@ -56,8 +85,8 @@ export const createBookHelper = async ({
       if (!existingBook.empty) {
         throw new HttpError(
           'A book with this ISBN already exists',
-          409,
-          'ISBN_ALREADY_EXISTS',
+          HttpStatusCodes.CONFLICT,
+          ErrorCodes.RESOURCE_ALREADY_EXISTS,
           { isbn }
         );
       }
@@ -76,15 +105,24 @@ export const createBookHelper = async ({
     const docRef = await bookCollection.add(newBook);
     const bid = docRef.id;
     await docRef.update({ bid });
-    return fetchBookById(bid);
+    const createdBook = await fetchBookById(bid);
+
+    await logEntry({
+      message: `New book created`,
+      severity: 'INFO',
+      bid,
+      title,
+      author,
+    });
+
+    return createdBook;
   } catch (error) {
-    console.error('Error in createBookHelper:', error);
     if (error instanceof HttpError) throw error;
     throw new HttpError(
-      'Failed to create book',
-      500,
-      'CREATE_BOOK_ERROR',
-      { title, author, originalError: error.message }
+      'Error creating book',
+      HttpStatusCodes.INTERNAL_SERVER_ERROR,
+      ErrorCodes.DATABASE_ERROR,
+      { title, author, isbn, error: error.message }
     );
   }
 };
@@ -95,9 +133,12 @@ export const updateBookHelper = async (bid, updateData) => {
     const bookDoc = await bookRef.get();
 
     if (!bookDoc.exists) {
-      throw new HttpError('Book not found', 404, 'BOOK_NOT_FOUND', {
-        bid,
-      });
+      throw new HttpError(
+        'Book not found',
+        HttpStatusCodes.NOT_FOUND,
+        ErrorCodes.RESOURCE_NOT_FOUND,
+        { bid }
+      );
     }
 
     const mergedData = {
@@ -113,14 +154,23 @@ export const updateBookHelper = async (bid, updateData) => {
     );
 
     await bookRef.update(updatedBook);
-    return fetchBookById(bid);
+    const fetchedUpdatedBook = await fetchBookById(bid);
+
+    await logEntry({
+      message: `Book updated`,
+      severity: 'INFO',
+      bid,
+      updatedFields: Object.keys(updateData),
+    });
+
+    return fetchedUpdatedBook;
   } catch (error) {
     if (error instanceof HttpError) throw error;
     throw new HttpError(
-      'Failed to update book',
-      500,
-      'UPDATE_BOOK_ERROR',
-      { bid }
+      'Error updating book',
+      HttpStatusCodes.INTERNAL_SERVER_ERROR,
+      ErrorCodes.DATABASE_ERROR,
+      { bid, updateData, error: error.message }
     );
   }
 };
@@ -131,9 +181,12 @@ export const deleteBookHelper = async (bid) => {
     const bookDoc = await bookRef.get();
 
     if (!bookDoc.exists) {
-      throw new HttpError('Book not found', 404, 'BOOK_NOT_FOUND', {
-        bid,
-      });
+      throw new HttpError(
+        'Book not found',
+        HttpStatusCodes.NOT_FOUND,
+        ErrorCodes.RESOURCE_NOT_FOUND,
+        { bid }
+      );
     }
 
     const batch = bookCollection.firestore.batch();
@@ -148,14 +201,20 @@ export const deleteBookHelper = async (bid) => {
     });
 
     await batch.commit();
+
+    await logEntry({
+      message: `Book and related user books deleted`,
+      severity: 'INFO',
+      bid,
+      deletedUserBooksCount: userBooksSnapshot.size,
+    });
   } catch (error) {
-    console.error('Error in deleteBookHelper:', error);
     if (error instanceof HttpError) throw error;
     throw new HttpError(
-      'Failed to delete book',
-      500,
-      'DELETE_BOOK_ERROR',
-      { bid, originalError: error.message }
+      'Error deleting book',
+      HttpStatusCodes.INTERNAL_SERVER_ERROR,
+      ErrorCodes.DATABASE_ERROR,
+      { bid, error: error.message }
     );
   }
 };
@@ -163,14 +222,22 @@ export const deleteBookHelper = async (bid) => {
 export const checkBookExistsHelper = async (bid) => {
   try {
     const bookDoc = await bookCollection.doc(bid).get();
-    return bookDoc.exists ? bookDoc.data() : null;
+    const exists = bookDoc.exists;
+
+    await logEntry({
+      message: `Book existence checked`,
+      severity: 'INFO',
+      bid,
+      exists,
+    });
+
+    return exists ? bookDoc.data() : null;
   } catch (error) {
-    console.error('Error checking if book exists:', error);
     throw new HttpError(
-      'Failed to check book existence',
-      500,
-      'CHECK_BOOK_ERROR',
-      { bid }
+      'Error checking book existence',
+      HttpStatusCodes.INTERNAL_SERVER_ERROR,
+      ErrorCodes.DATABASE_ERROR,
+      { bid, error: error.message }
     );
   }
 };

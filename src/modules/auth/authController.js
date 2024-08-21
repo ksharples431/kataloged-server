@@ -1,4 +1,4 @@
-import HttpError from '../../models/httpErrorModel.js';
+import HttpError from '../../errors/httpErrorModel.js';
 import { adminAuth } from '../../config/firebaseConfig.js';
 import { tokenCache } from '../../middleware/tokenMiddleware.js';
 import { validateInput } from './helpers/validationHelpers.js';

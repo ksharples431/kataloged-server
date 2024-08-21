@@ -1,22 +1,16 @@
-import HttpError from '../../../models/httpErrorModel.js';
+import HttpError from '../../../errors/httpErrorModel.js';
+import {
+  ErrorCodes,
+  HttpStatusCodes,
+} from '../../../errors/errorConstraints.js';
 
 export const validateInput = (data, schema) => {
-  try {
-    const { error } = schema.validate(data);
-    if (error) {
-      throw new HttpError(
-        error.details[0].message,
-        400,
-        'VALIDATION_ERROR',
-        { data }
-      );
-    }
-  } catch (error) {
-    if (error instanceof HttpError) throw error;
+  const { error } = schema.validate(data);
+  if (error) {
     throw new HttpError(
-      'Validation error',
-      400,
-      'UNKNOWN_VALIDATION_ERROR',
+      error.details[0].message,
+      HttpStatusCodes.BAD_REQUEST,
+      ErrorCodes.INVALID_INPUT,
       { data }
     );
   }
@@ -33,15 +27,25 @@ export const validateSortOptions = (sortBy, order) => {
   const validOrders = ['asc', 'desc'];
 
   if (!validSortFields.includes(sortBy)) {
-    throw new HttpError('Invalid sort field', 400, 'INVALID_SORT_FIELD', {
-      sortBy,
-    });
+    throw new HttpError(
+      'Invalid sort field',
+      HttpStatusCodes.BAD_REQUEST,
+      ErrorCodes.INVALID_INPUT,
+      {
+        sortBy,
+      }
+    );
   }
 
   if (!validOrders.includes(order.toLowerCase())) {
-    throw new HttpError('Invalid sort order', 400, 'INVALID_SORT_ORDER', {
-      order,
-    });
+    throw new HttpError(
+      'Invalid sort order',
+      HttpStatusCodes.BAD_REQUEST,
+      ErrorCodes.INVALID_INPUT,
+      {
+        order,
+      }
+    );
   }
 };
 
@@ -49,8 +53,8 @@ export const validateSearchParams = ({ title, author, isbn }) => {
   if (!title && !author && !isbn) {
     throw new HttpError(
       'At least one search parameter (title, author, or isbn) is required',
-      400,
-      'MISSING_SEARCH_PARAMS'
+      HttpStatusCodes.BAD_REQUEST,
+      ErrorCodes.INVALID_INPUT
     );
   }
 };
@@ -59,8 +63,8 @@ export const validateGeneralSearchParams = (query) => {
   if (!query || query.trim().length === 0) {
     throw new HttpError(
       'Search query cannot be empty',
-      400,
-      'INVALID_SEARCH_QUERY'
+      HttpStatusCodes.BAD_REQUEST,
+      ErrorCodes.INVALID_INPUT
     );
   }
 };

@@ -5,9 +5,7 @@ import { getAuth } from 'firebase/auth';
 import { readFile } from 'fs/promises';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import dotenv from 'dotenv';
-
-dotenv.config();
+import config from './config.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -16,18 +14,27 @@ let firebaseAdminApp;
 let firebaseClientApp;
 let auth;
 
+// console.log('Config:', config);
+// console.log(
+//   'Google Application Credentials:',
+//   config.google.applicationCredentials
+// );
+
 // Initialize Firebase Admin SDK
 async function initializeFirebaseAdmin() {
-  if (process.env.NODE_ENV === 'production') {
+  if (config.server.env === 'production') {
     firebaseAdminApp = admin.initializeApp({
       credential: admin.credential.applicationDefault(),
     });
   } else {
     try {
-      const serviceAccountPath = join(
-        __dirname,
-        '../../serviceAccountKey.json'
-      );
+      const serviceAccountPath = config.google.applicationCredentials;
+
+
+      if (!serviceAccountPath) {
+        throw new Error('Service account path is undefined');
+      }
+
       const serviceAccount = JSON.parse(
         await readFile(serviceAccountPath, 'utf8')
       );
@@ -44,17 +51,7 @@ async function initializeFirebaseAdmin() {
 
 // Initialize Firebase Client SDK
 function initializeFirebaseClient() {
-  const firebaseConfig = {
-    apiKey: process.env.FB_API_KEY,
-    authDomain: process.env.FB_AUTH_DOMAIN,
-    projectId: process.env.FB_PROJECT_ID,
-    storageBucket: process.env.FB_STORAGE_BUCKET,
-    messagingSenderId: process.env.FB_MESSAGING_SENDER_ID,
-    appId: process.env.FB_APP_ID,
-    // measurementId: process.env.FB_MEASUREMENT_ID,
-  };
-
-  firebaseClientApp = initializeApp(firebaseConfig);
+  firebaseClientApp = initializeApp(config.firebase);
   auth = getAuth(firebaseClientApp);
 }
 
@@ -62,7 +59,7 @@ await initializeFirebaseAdmin();
 initializeFirebaseClient();
 
 const db = getFirestore();
-const adminAuth = admin.auth()
+const adminAuth = admin.auth();
 
 db.settings({ ignoreUndefinedProperties: true });
 

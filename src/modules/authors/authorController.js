@@ -1,4 +1,4 @@
-import HttpError from '../../models/httpErrorModel.js';
+import HttpError from '../../errors/httpErrorModel.js';
 import { authorService } from './services/authorService.js';
 import { validateSortOptions } from './helpers/validationHelpers.js';
 import { sortAuthors } from './helpers/sortingHelpers.js';

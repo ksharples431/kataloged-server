@@ -1,4 +1,8 @@
-import HttpError from '../../../models/httpErrorModel.js';
+import HttpError from '../../../errors/httpErrorModel.js';
+import {
+  ErrorCodes,
+  HttpStatusCodes,
+} from '../../../errors/errorConstraints.js';
 
 export const removeCommonArticles = (title) => {
   const articlesRegex = /^(a |an |the )/i;
@@ -11,44 +15,36 @@ export const getLastName = (name) => {
 };
 
 export const sortBooks = (books, sortBy, order) => {
-  try {
-    const compareFunction = (a, b) => {
-      let comparison = 0;
+  const compareFunction = (a, b) => {
+    let comparison = 0;
 
-      switch (sortBy) {
-        case 'title':
-          const titleA = removeCommonArticles(a.title);
-          const titleB = removeCommonArticles(b.title);
-          comparison = titleA.localeCompare(titleB);
-          break;
-        case 'author':
-          const aLastName = getLastName(a.author);
-          const bLastName = getLastName(b.author);
-          comparison = aLastName.localeCompare(bLastName);
-          break;
-        case 'updatedAt':
-          const dateA = new Date(a.updatedAtString);
-          const dateB = new Date(b.updatedAtString);
-          comparison = dateA.getTime() - dateB.getTime();
-          break;
-        default:
-          throw new HttpError(
-            'Invalid sort field',
-            400,
-            'INVALID_SORT_FIELD',
-            { sortBy }
-          );
-      }
+    switch (sortBy) {
+      case 'title':
+        const titleA = removeCommonArticles(a.title);
+        const titleB = removeCommonArticles(b.title);
+        comparison = titleA.localeCompare(titleB);
+        break;
+      case 'author':
+        const aLastName = getLastName(a.author);
+        const bLastName = getLastName(b.author);
+        comparison = aLastName.localeCompare(bLastName);
+        break;
+      case 'updatedAt':
+        const dateA = new Date(a.updatedAtString);
+        const dateB = new Date(b.updatedAtString);
+        comparison = dateA.getTime() - dateB.getTime();
+        break;
+      default:
+        throw new HttpError(
+          'Invalid sort field',
+          HttpStatusCodes.BAD_REQUEST,
+          ErrorCodes.INVALID_INPUT,
+          { sortBy }
+        );
+    }
 
-      return order === 'asc' ? comparison : -comparison;
-    };
+    return order === 'asc' ? comparison : -comparison;
+  };
 
-    return books.sort(compareFunction);
-  } catch (error) {
-    if (error instanceof HttpError) throw error;
-    throw new HttpError('Error sorting books', 500, 'BOOK_SORTING_ERROR', {
-      sortBy,
-      order,
-    });
-  }
+  return books.sort(compareFunction);
 };

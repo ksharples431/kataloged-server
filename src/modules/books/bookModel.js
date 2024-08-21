@@ -1,11 +1,10 @@
 import Joi from 'joi';
-//todo: double check data going both directions
-//todo: transform incoming data so i dont have to accept id
+
 export const createBookSchema = Joi.object({
   author: Joi.string().required(),
   description: Joi.string(),
   genre: Joi.string(),
-  imagePath: Joi.string(),
+  imagePath: Joi.string().uri(),
   isbn: Joi.string(),
   lowercaseAuthor: Joi.string(),
   lowercaseTitle: Joi.string(),
@@ -16,15 +15,15 @@ export const createBookSchema = Joi.object({
 
   bid: Joi.string().optional(),
   id: Joi.string().optional(),
-});
+}).unknown(false);
 
 export const updateBookSchema = Joi.object({
   author: Joi.string(),
   description: Joi.string(),
   genre: Joi.string(),
-  imagePath: Joi.string(),
+  imagePath: Joi.string().uri(),
   isbn: Joi.string(),
-  lowercaseAuthor: Joi.string(), 
+  lowercaseAuthor: Joi.string(),
   lowercaseTitle: Joi.string(),
   seriesName: Joi.string(),
   seriesNumber: Joi.string(),
@@ -33,4 +32,15 @@ export const updateBookSchema = Joi.object({
 
   bid: Joi.string().forbidden(),
   id: Joi.string(),
+}).unknown(false);
+
+export const searchBookSchema = Joi.object({
+  title: Joi.string(),
+  author: Joi.string(),
+  isbn: Joi.string(),
+}).or('title', 'author', 'isbn');
+
+export const generalSearchSchema = Joi.object({
+  query: Joi.string().required(),
+  uid: Joi.string(),
 });

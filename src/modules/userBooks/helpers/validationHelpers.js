@@ -1,4 +1,4 @@
-import HttpError from '../../../models/httpErrorModel.js';
+import HttpError from '../../../errors/httpErrorModel.js';
 
 export const validateInput = (data, schema) => {
   try {
@@ -54,4 +54,3 @@ export const validateSortOptions = (sortBy, order) => {
 //     );
 //   }
 // };
-

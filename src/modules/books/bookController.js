@@ -1,5 +1,4 @@
-import HttpError from '../../models/httpErrorModel.js';
-import { createBookSchema, updateBookSchema } from './bookModel.js';
+import HttpError from '../../errors/httpErrorModel.js';
 import { buildGoogleQuery } from './helpers/searchHelpers.js';
 import {
   validateInput,
@@ -25,253 +24,198 @@ import {
   deleteBookHelper,
   checkBookExistsHelper,
 } from './services/bookService.js';
+import { logEntry } from '../../config/cloudLoggingConfig.js';
+import {
+  ErrorCodes,
+  HttpStatusCodes,
+} from '../../errors/errorConstraints.js';
 
-
-
-export const getBookById = async (req, res, next) => {
-  try {
-    const { bid } = req.params;
-    let book = await fetchBookById(bid);
-    book = formatBookDetailsResponse(book);
-
-    res.status(200).json({
-      data: {
-        message: 'Book fetched successfully',
-        book,
-      },
-    });
-  } catch (error) {
-    if (error instanceof HttpError) {
-      next(error);
-    } else {
-      next(
-        new HttpError('Failed to fetch book', 500, 'FETCH_BOOK_ERROR', {
-          bid: req.params.bid,
-        })
-      );
-    }
-  }
-};
-
-export const getBooks = async (req, res, next) => {
-  try {
-    const { sortBy = 'title', order = 'asc' } = req.query;
-    validateSortOptions(sortBy, order);
-    let books = await fetchAllBooks(sortBy, order);
-
-    books = books.map(formatBookCoverResponse);
-
-    res.status(200).json({
-      data: {
-        message: 'Books fetched successfully',
-        books,
-      },
-    });
-  } catch (error) {
-    if (error instanceof HttpError) {
-      next(error);
-    } else {
-      next(
-        new HttpError('Failed to fetch books', 500, 'FETCH_BOOKS_ERROR', {
-          sortBy,
-          order,
-        })
-      );
-    }
-  }
-};
-
-export const createBook = async (req, res, next) => {
-  try {
-    validateInput(req.body, createBookSchema);
-    let book = await createBookHelper(req.body);
-    book = formatBookCoverResponse(book);
-
-    res.status(201).json({
-      data: {
-        message: 'Book created successfully',
-        book,
-      },
-    });
-  } catch (error) {
-    if (error instanceof HttpError) {
-      next(error);
-    } else {
-      next(
-        new HttpError('Failed to create book', 500, 'CREATE_BOOK_ERROR', {
-          bookData: req.body,
-        })
-      );
-    }
-  }
-};
-
-export const updateBook = async (req, res, next) => {
-  try {
-    validateInput(req.body, updateBookSchema);
-    const { bid } = req.params;
-    const updateData = req.body;
-    let updatedBook = await updateBookHelper(bid, updateData);
-    updatedBook = formatBookCoverResponse(updatedBook);
-
-    res.status(200).json({
-      data: {
-        message: 'Book updated successfully',
-        book: updatedBook,
-      },
-    });
-  } catch (error) {
-    if (error instanceof HttpError) {
-      next(error);
-    } else {
-      next(
-        new HttpError('Failed to update book', 500, 'UPDATE_BOOK_ERROR', {
-          bid: req.params.bid,
-          updateData: req.body,
-        })
-      );
-    }
-  }
-};
-
-export const deleteBook = async (req, res, next) => {
-  try {
-    const { bid } = req.params;
-    await deleteBookHelper(bid);
-
-    res.status(200).json({
-      data: {
-        message: 'Book and related user books deleted successfully',
-      },
-    });
-  } catch (error) {
-    if (error instanceof HttpError) {
-      next(error);
-    } else {
-      next(
-        new HttpError('Failed to delete book', 500, 'DELETE_BOOK_ERROR', {
-          bid: req.params.bid,
-        })
-      );
-    }
-  }
-};
-
-export const searchBook = async (req, res, next) => {
-  try {
-    const { title, author, isbn } = req.query;
-    validateSearchParams({ title, author, isbn });
-
-    let books = await searchBooksInDatabase({ title, author, isbn });
-
-    res.status(200).json({
-      data: {
-        message: books.length > 0 ? 'Books found' : 'No books found',
-        books,
-      },
-    });
-  } catch (error) {
-    next(
-      new HttpError('Failed to search books', 500, 'SEARCH_BOOKS_ERROR', {
-        searchParams: req.query,
-      })
+export const getBookById = async (req, res) => {
+  const { bid } = req.params;
+  let book = await fetchBookById(bid);
+  if (!book) {
+    throw new HttpError(
+      'Book not found',
+      HttpStatusCodes.NOT_FOUND,
+      ErrorCodes.RESOURCE_NOT_FOUND
     );
   }
+  book = formatBookDetailsResponse(book);
+
+  await logEntry({
+    message: `Book fetched: ${bid}`,
+    severity: 'INFO',
+    book: book,
+  });
+
+  res.status(200).json({
+    data: {
+      message: 'Book fetched successfully',
+      book,
+    },
+  });
 };
 
-export const searchGoogleBooks = async (req, res, next) => {
-  try {
-    const { title, author, isbn } = req.query;
-    validateSearchParams({ title, author, isbn });
+export const getBooks = async (req, res) => {
+  const { sortBy = 'title', order = 'asc' } = req.query;
+  validateSortOptions(sortBy, order);
+  let books = await fetchAllBooks(sortBy, order);
+  books = books.map(formatBookCoverResponse);
 
-    const googleQuery = buildGoogleQuery({ title, author, isbn });
-    let books = await searchBooksInGoogleAPI(googleQuery);
+  await logEntry({
+    message: `Books fetched. Count: ${books.length}`,
+    severity: 'INFO',
+    sortBy,
+    order,
+  });
 
-    res.status(200).json({
-      data: {
-        message: books.length > 0 ? 'Books found' : 'No books found',
-        books,
-      },
-    });
-  } catch (error) {
-    next(
-      new HttpError(
-        'Failed to search Google Books',
-        500,
-        'GOOGLE_SEARCH_ERROR',
-        { searchParams: req.query }
-      )
-    );
-  }
+  res.status(200).json({
+    data: {
+      message: 'Books fetched successfully',
+      books,
+    },
+  });
 };
 
-export const generalSearch = async (req, res, next) => {
-  try {
-    const { query, uid } = req.query;
+export const createBook = async (req, res) => {
+  let book = await createBookHelper(req.body);
+  book = formatBookCoverResponse(book);
 
-    validateGeneralSearchParams(query);
+  await logEntry({
+    message: `Book created: ${book.bid}`,
+    severity: 'INFO',
+    book: book,
+  });
 
-    // Search for all books
-    let allBooks = await searchDatabaseGeneral(query);
-    allBooks = allBooks.map(formatBookCoverResponse);
-
-    let userBooks = [];
-    if (uid && allBooks.length > 0) {
-      // Only search for user books if a uid is provided and books were found
-      const bids = allBooks.map((book) => book.bid);
-      userBooks = await searchUserBooksByBids(uid, bids);
-
-    }
-
-    res.status(200).json({
-      data: {
-        message: allBooks.length > 0 ? 'Books found' : 'No books found',
-        allBooks,
-        userBooks,
-      },
-    });
-  } catch (error) {
-    if (error instanceof HttpError) {
-      next(error);
-    } else {
-      next(
-        new HttpError(
-          'Failed to perform general search',
-          500,
-          'GENERAL_SEARCH_ERROR',
-          {
-            query: req.query.query,
-
-          }
-        )
-      );  
-    }
-  }
+  res.status(201).json({
+    data: {
+      message: 'Book created successfully',
+      book,
+    },
+  });
 };
 
-export const checkBookExists = async (req, res, next) => {
-  try {
-    const { bid } = req.params;
-    const book = await checkBookExistsHelper(bid);
+export const updateBook = async (req, res) => {
+  const { bid } = req.params;
+  const updateData = req.body;
+  let updatedBook = await updateBookHelper(bid, updateData);
+  updatedBook = formatBookCoverResponse(updatedBook);
 
-    res.status(200).json({
-      data: {
-        exists: !!book,
-        book: book,
-      },
-    });
-  } catch (error) {
-    if (error instanceof HttpError) {
-      next(error);
-    } else {
-      next(
-        new HttpError(
-          'Failed to check book existence',
-          500,
-          'CHECK_BOOK_ERROR',
-          { bid: req.params.bid }
-        )
-      );
-    }
+  await logEntry({
+    message: `Book updated: ${bid}`,
+    severity: 'INFO',
+    book: updatedBook,
+  });
+
+  res.status(200).json({
+    data: {
+      message: 'Book updated successfully',
+      book: updatedBook,
+    },
+  });
+};
+
+export const deleteBook = async (req, res) => {
+  const { bid } = req.params;
+  await deleteBookHelper(bid);
+
+  await logEntry({
+    message: `Book deleted: ${bid}`,
+    severity: 'INFO',
+  });
+
+  res.status(200).json({
+    data: {
+      message: 'Book and related user books deleted successfully',
+    },
+  });
+};
+
+export const searchBook = async (req, res) => {
+  const { title, author, isbn } = req.query;
+  validateSearchParams({ title, author, isbn });
+
+  let books = await searchBooksInDatabase({ title, author, isbn });
+
+  await logEntry({
+    message: `Book search performed. Results: ${books.length}`,
+    severity: 'INFO',
+    searchParams: { title, author, isbn },
+  });
+
+  res.status(200).json({
+    data: {
+      message: books.length > 0 ? 'Books found' : 'No books found',
+      books,
+    },
+  });
+};
+
+export const searchGoogleBooks = async (req, res) => {
+  const { title, author, isbn } = req.query;
+  validateSearchParams({ title, author, isbn });
+
+  const googleQuery = buildGoogleQuery({ title, author, isbn });
+  let books = await searchBooksInGoogleAPI(googleQuery);
+
+  await logEntry({
+    message: `Google Books search performed. Results: ${books.length}`,
+    severity: 'INFO',
+    searchParams: { title, author, isbn },
+  });
+
+  res.status(200).json({
+    data: {
+      message: books.length > 0 ? 'Books found' : 'No books found',
+      books,
+    },
+  });
+};
+
+export const generalSearch = async (req, res) => {
+  const { query, uid } = req.query;
+
+  validateGeneralSearchParams(query);
+
+  let allBooks = await searchDatabaseGeneral(query);
+  allBooks = allBooks.map(formatBookCoverResponse);
+
+  let userBooks = [];
+  if (uid && allBooks.length > 0) {
+    const bids = allBooks.map((book) => book.bid);
+    userBooks = await searchUserBooksByBids(uid, bids);
   }
+
+  await logEntry({
+    message: `General search performed. Results: ${allBooks.length}`,
+    severity: 'INFO',
+    searchQuery: query,
+    uid: uid || 'Not provided',
+  });
+
+  res.status(200).json({
+    data: {
+      message: allBooks.length > 0 ? 'Books found' : 'No books found',
+      allBooks,
+      userBooks,
+    },
+  });
+};
+
+export const checkBookExists = async (req, res) => {
+  const { bid } = req.params;
+  const book = await checkBookExistsHelper(bid);
+
+  await logEntry({
+    message: `Book existence checked: ${bid}`,
+    severity: 'INFO',
+    exists: !!book,
+  });
+
+  res.status(200).json({
+    data: {
+      exists: !!book,
+      book: book,
+    },
+  });
 };

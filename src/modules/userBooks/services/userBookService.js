@@ -1,5 +1,5 @@
 import db from '../../../config/firebaseConfig.js';
-import HttpError from '../../../models/httpErrorModel.js';
+import HttpError from '../../../errors/httpErrorModel.js';
 import { sortUserBooks } from '../helpers/sortingHelpers.js';
 import { combineBooksData } from './combineBooksService.js';
 import { validateSortOptions } from '../helpers/validationHelpers.js';

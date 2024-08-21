@@ -29,10 +29,17 @@ const getSeverity = (category) => {
       return 'CRITICAL';
     case ErrorCategories.SERVER_ERROR.SERVICE_UNAVAILABLE:
     case ErrorCategories.SERVER_ERROR.EXTERNAL_API:
+    case ErrorCategories.SERVER_ERROR.UNKNOWN:
       return 'ERROR';
     case ErrorCategories.CLIENT_ERROR.AUTHENTICATION:
     case ErrorCategories.CLIENT_ERROR.AUTHORIZATION:
       return 'WARNING';
+    case ErrorCategories.CLIENT_ERROR.VALIDATION:
+    case ErrorCategories.CLIENT_ERROR.NOT_FOUND:
+    case ErrorCategories.CLIENT_ERROR.CONFLICT:
+    case ErrorCategories.CLIENT_ERROR.RATE_LIMIT:
+    case ErrorCategories.CLIENT_ERROR.BAD_REQUEST:
+      return 'NOTICE';
     default:
       return 'INFO';
   }
@@ -44,6 +51,17 @@ export const logError = (error, req) => {
   if (shouldLogError(errorKey)) {
     const category = error.category || getErrorCategory(error.statusCode);
     const severity = getSeverity(category);
+
+    if (
+      ![
+        SeverityLevels.CRITICAL,
+        SeverityLevels.ERROR,
+        SeverityLevels.WARNING,
+        SeverityLevels.NOTICE,
+      ].includes(severity)
+    ) {
+      return; // Skip logging
+    }
 
     const logEntry = {
       severity,

@@ -14,7 +14,7 @@ import {
 import { asyncRouteHandler } from './errors/errorHandler.js';
 import { requestLoggingMiddleware } from './middleware/requestLoggingMiddleware.js';
 import { logEntry } from './config/cloudLoggingConfig.js';
-// import { setHeaders } from './middleware/headersMiddleware.js';
+import frontendErrorRoute from './errors/frontendErrors.js';
 import authRoutes from './modules/auth/authRoutes.js';
 import bookRoutes from './modules/books/bookRoutes.js';
 import userRoutes from './modules/users/userRoutes.js';
@@ -51,8 +51,8 @@ app.use(
 );
 app.options('*', cors());
 
-app.use(requestLoggingMiddleware);
 // Apply rate limiting to all routes
+app.use(requestLoggingMiddleware);
 app.use(apiLimiter);
 
 // Apply more stringent rate limiting to auth routes
@@ -78,6 +78,7 @@ app.use('/api', userAuthorRoutes);
 app.use('/api', userBookRoutes);
 app.use('/api', userGenreRoutes);
 app.use('/api', userRoutes);
+app.use('/api', frontendErrorRoute);
 
 app.use(notFound);
 app.use(errorMiddleware);

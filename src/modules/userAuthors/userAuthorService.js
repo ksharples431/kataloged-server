@@ -1,26 +1,22 @@
 import db from '../../config/firebaseConfig.js';
 import HttpError from '../../errors/httpErrorModel.js';
-
 import {
   ErrorCodes,
   HttpStatusCodes,
 } from '../../errors/errorConstraints.js';
-import { generateId } from '../../utils/globalHelpers.js';
+import { generateId, executeQuery } from '../../utils/globalHelpers.js';
 import { combineBooksData } from '../userBooks/userBookService.js';
 
 const userBookCollection = db.collection('userBooks');
 
 export const fetchAllUserAuthors = async (uid) => {
   try {
-    const userBooksSnapshot = await userBookCollection
-      .where('uid', '==', uid)
-      .get();
+    const query = userBookCollection.where('uid', '==', uid);
+    const userBooks = await executeQuery(query);
+    const combinedBooks = await combineBooksData(userBooks);
     const authorMap = new Map();
 
-    let userBooks = userBooksSnapshot.docs.map((doc) => doc.data());
-    userBooks = await combineBooksData(userBooks);
-
-    userBooks.forEach((book) => {
+    combinedBooks.forEach((book) => {
       const authorName = book.author;
 
       if (authorMap.has(authorName)) {
@@ -40,10 +36,7 @@ export const fetchAllUserAuthors = async (uid) => {
       }
     });
 
-    const authors = Array.from(authorMap.values());
-
-  
-    return authors;
+    return Array.from(authorMap.values());
   } catch (error) {
     if (error instanceof HttpError) throw error;
     throw new HttpError(
@@ -57,11 +50,10 @@ export const fetchAllUserAuthors = async (uid) => {
 
 export const fetchUserAuthorBooks = async (uid, author) => {
   try {
-    const userBooksSnapshot = await userBookCollection
-      .where('uid', '==', uid)
-      .get();
+    const query = userBookCollection.where('uid', '==', uid);
+    const userBooks = await executeQuery(query);
 
-    if (userBooksSnapshot.empty) {
+    if (userBooks.length === 0) {
       throw new HttpError(
         'No books found for this user',
         HttpStatusCodes.NOT_FOUND,
@@ -70,10 +62,10 @@ export const fetchUserAuthorBooks = async (uid, author) => {
       );
     }
 
-    let userBooks = userBooksSnapshot.docs.map((doc) => doc.data());
-    userBooks = await combineBooksData(userBooks);
-
-    const authorBooks = userBooks.filter((book) => book.author === author);
+    const combinedBooks = await combineBooksData(userBooks);
+    const authorBooks = combinedBooks.filter(
+      (book) => book.author === author
+    );
 
     if (authorBooks.length === 0) {
       throw new HttpError(
@@ -83,8 +75,6 @@ export const fetchUserAuthorBooks = async (uid, author) => {
         { uid, author }
       );
     }
-
-    
 
     return authorBooks;
   } catch (error) {

@@ -7,10 +7,7 @@ import {
   sortBooks,
   formatBookCoverResponse,
 } from '../../utils/globalHelpers.js';
-import {
-  fetchAllAuthors,
-  fetchAuthorBooks,
-} from './authorService.js';
+import { fetchAllAuthors, fetchAuthorBooks } from './authorService.js';
 
 export const getAuthors = async (req, res) => {
   validateInput(req.query, getAuthorsQuerySchema);

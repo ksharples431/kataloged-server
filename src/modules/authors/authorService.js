@@ -4,39 +4,37 @@ import {
   ErrorCodes,
   HttpStatusCodes,
 } from '../../errors/errorConstraints.js';
-import { generateId } from '../../utils/globalHelpers.js';
+import { generateId, executeQuery } from '../../utils/globalHelpers.js';
 
 const bookCollection = db.collection('books');
 
 export const fetchAllAuthors = async () => {
   try {
-    const booksSnapshot = await bookCollection.get();
+    const query = bookCollection;
+    const books = await executeQuery(query);
     const authorMap = new Map();
 
-    booksSnapshot.forEach((doc) => {
-      const book = doc.data();
+    books.forEach((book) => {
       const authorName = book.author;
 
-        if (authorMap.has(authorName)) {
-          const existingAuthor = authorMap.get(authorName);
-          existingAuthor.bookCount += 1;
-          if (book.updatedAtString > existingAuthor.updatedAtString) {
-            existingAuthor.updatedAtString = book.updatedAtString;
-          }
-        } else {
-          authorMap.set(authorName, {
-            name: authorName,
-            bookCount: 1,
-            updatedAtString:
-              book.updatedAtString || new Date().toISOString(),
-            aid: generateId(authorName),
-          });
+      if (authorMap.has(authorName)) {
+        const existingAuthor = authorMap.get(authorName);
+        existingAuthor.bookCount += 1;
+        if (book.updatedAtString > existingAuthor.updatedAtString) {
+          existingAuthor.updatedAtString = book.updatedAtString;
         }
+      } else {
+        authorMap.set(authorName, {
+          name: authorName,
+          bookCount: 1,
+          updatedAtString:
+            book.updatedAtString || new Date().toISOString(),
+          aid: generateId(authorName),
+        });
+      }
     });
 
-    const authors = Array.from(authorMap.values());
-
-    return authors;
+    return Array.from(authorMap.values());
   } catch (error) {
     if (error instanceof HttpError) throw error;
     throw new HttpError(
@@ -50,11 +48,10 @@ export const fetchAllAuthors = async () => {
 
 export const fetchAuthorBooks = async (author) => {
   try {
-    const booksSnapshot = await bookCollection
-      .where('author', '==', author)
-      .get();
+    const query = bookCollection.where('author', '==', author);
+    const books = await executeQuery(query);
 
-    if (booksSnapshot.empty) {
+    if (books.length === 0) {
       throw new HttpError(
         'No books found for this author',
         HttpStatusCodes.NOT_FOUND,
@@ -63,9 +60,7 @@ export const fetchAuthorBooks = async (author) => {
       );
     }
 
-    let authorBooks = booksSnapshot.docs.map((doc) => doc.data());
-
-    return authorBooks;
+    return books;
   } catch (error) {
     if (error instanceof HttpError) throw error;
     throw new HttpError(

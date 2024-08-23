@@ -4,22 +4,19 @@ import {
   ErrorCodes,
   HttpStatusCodes,
 } from '../../errors/errorConstraints.js';
-import { generateId } from '../../utils/globalHelpers.js';
+import { generateId, executeQuery } from '../../utils/globalHelpers.js';
 import { combineBooksData } from '../userBooks/userBookService.js';
 
 const userBookCollection = db.collection('userBooks');
 
 export const fetchAllUserGenres = async (uid) => {
   try {
-    const userBooksSnapshot = await userBookCollection
-      .where('uid', '==', uid)
-      .get();
+    const query = userBookCollection.where('uid', '==', uid);
+    const userBooks = await executeQuery(query);
+    const combinedBooks = await combineBooksData(userBooks);
     const genreMap = new Map();
 
-    let userBooks = userBooksSnapshot.docs.map((doc) => doc.data());
-    userBooks = await combineBooksData(userBooks);
-
-    userBooks.forEach((book) => {
+    combinedBooks.forEach((book) => {
       const genreName = book.genre || 'Uncategorized';
 
       if (genreMap.has(genreName)) {
@@ -39,11 +36,7 @@ export const fetchAllUserGenres = async (uid) => {
       }
     });
 
-    const genres = Array.from(genreMap.values());
-
-
-
-    return genres;
+    return Array.from(genreMap.values());
   } catch (error) {
     if (error instanceof HttpError) throw error;
     throw new HttpError(
@@ -57,9 +50,8 @@ export const fetchAllUserGenres = async (uid) => {
 
 export const fetchUserGenreBooks = async (uid, genre) => {
   try {
-    const userBooksSnapshot = await userBookCollection
-      .where('uid', '==', uid)
-      .get();
+    const query = userBookCollection.where('uid', '==', uid);
+    const userBooks = await executeQuery(query);
 
     if (userBooksSnapshot.empty) {
       throw new HttpError(
@@ -70,7 +62,6 @@ export const fetchUserGenreBooks = async (uid, genre) => {
       );
     }
 
-    let userBooks = userBooksSnapshot.docs.map((doc) => doc.data());
     userBooks = await combineBooksData(userBooks);
 
     const genreBooks = userBooks.filter((book) => book.genre === genre);
@@ -83,7 +74,6 @@ export const fetchUserGenreBooks = async (uid, genre) => {
         { uid, genre }
       );
     }
-
 
     return genreBooks;
   } catch (error) {

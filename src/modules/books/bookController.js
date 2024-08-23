@@ -8,13 +8,11 @@ import {
   updateBookSchema,
   getBooksQuerySchema,
 } from './bookModel.js';
-import {
-  formatBookDetailsResponse,
-} from './bookHelpers.js';
+import { formatBookDetailsResponse } from './bookHelpers.js';
 import {
   validateInput,
   formatBookCoverResponse,
-  sortBooks
+  sortBooks,
 } from '../../utils/globalHelpers.js';
 import {
   checkBookExistsHelper,
@@ -29,7 +27,6 @@ export const checkBookExists = async (req, res) => {
   const { bid } = req.params;
 
   const book = await checkBookExistsHelper(bid);
-
 
   res.status(200).json({
     data: {
@@ -54,8 +51,6 @@ export const getBookById = async (req, res) => {
 
   book = formatBookDetailsResponse(book);
 
-
-
   res.status(200).json({
     data: {
       message: 'Book fetched successfully',
@@ -72,14 +67,12 @@ export const getBooks = async (req, res) => {
   const sortedBooks = sortBooks(books, sortBy, order);
   books = sortedBooks.map(formatBookCoverResponse);
 
-
-
   res.status(200).json({
     data: {
       message:
         books.length > 0
           ? 'Books fetched successfully'
-          : "No books in the library",
+          : 'No books in the library',
       books,
     },
   });
@@ -90,7 +83,6 @@ export const createBook = async (req, res) => {
 
   let book = await createBookHelper(req.body);
   book = formatBookCoverResponse(book);
-
 
   res.status(201).json({
     data: {
@@ -108,7 +100,6 @@ export const updateBook = async (req, res) => {
   let updatedBook = await updateBookHelper(bid, updateData);
   updatedBook = formatBookCoverResponse(updatedBook);
 
-
   res.status(200).json({
     data: {
       message: 'Book updated successfully',
@@ -119,7 +110,7 @@ export const updateBook = async (req, res) => {
 
 export const deleteBook = async (req, res) => {
   const { bid } = req.params;
-  
+
   await deleteBookHelper(bid);
 
   res.status(200).json({
@@ -128,4 +119,3 @@ export const deleteBook = async (req, res) => {
     },
   });
 };
-

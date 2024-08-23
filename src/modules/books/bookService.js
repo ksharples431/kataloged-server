@@ -1,12 +1,12 @@
 import db from '../../config/firebaseConfig.js';
 import HttpError from '../../errors/httpErrorModel.js';
-
 import {
   ErrorCodes,
   HttpStatusCodes,
 } from '../../errors/errorConstraints.js';
 import {
   generateLowercaseFields,
+  executeQuery,
 } from '../../utils/globalHelpers.js';
 
 const bookCollection = db.collection('books');
@@ -14,9 +14,10 @@ const userBookCollection = db.collection('userBooks');
 
 export const fetchBookById = async (bid) => {
   try {
-    const bookDoc = await bookCollection.doc(bid).get();
+    const query = bookCollection.doc(bid);
+    const [book] = await executeQuery(query);
 
-    if (!bookDoc.exists) {
+    if (!book) {
       throw new HttpError(
         'Book not found',
         HttpStatusCodes.NOT_FOUND,
@@ -25,9 +26,7 @@ export const fetchBookById = async (bid) => {
       );
     }
 
-
-    return bookDoc.data();
-
+    return book;
   } catch (error) {
     if (error instanceof HttpError) throw error;
     throw new HttpError(
@@ -41,11 +40,8 @@ export const fetchBookById = async (bid) => {
 
 export const fetchAllBooks = async () => {
   try {
-    const snapshot = await bookCollection.get();
-    let books = snapshot.docs.map((doc) => doc.data());
-
-    return books;
-
+    const query = bookCollection;
+    return await executeQuery(query);
   } catch (error) {
     if (error instanceof HttpError) throw error;
     throw new HttpError(
@@ -66,11 +62,10 @@ export const createBookHelper = async ({
 }) => {
   try {
     if (isbn) {
-      const existingBook = await bookCollection
-        .where('isbn', '==', isbn)
-        .get();
+      const query = bookCollection.where('isbn', '==', isbn);
+      const existingBooks = await executeQuery(query);
 
-      if (!existingBook.empty) {
+      if (existingBooks.length > 0) {
         throw new HttpError(
           'A book with this ISBN already exists',
           HttpStatusCodes.CONFLICT,
@@ -93,12 +88,7 @@ export const createBookHelper = async ({
     const docRef = await bookCollection.add(newBook);
     const bid = docRef.id;
     await docRef.update({ bid });
-    const createdBook = await fetchBookById(bid);
-
-
-
-    return createdBook;
-
+    return await fetchBookById(bid);
   } catch (error) {
     if (error instanceof HttpError) throw error;
     throw new HttpError(
@@ -112,10 +102,10 @@ export const createBookHelper = async ({
 
 export const updateBookHelper = async (bid, updateData) => {
   try {
-    const bookRef = bookCollection.doc(bid);
-    const bookDoc = await bookRef.get();
+    const query = bookCollection.doc(bid);
+    const [book] = await executeQuery(query);
 
-    if (!bookDoc.exists) {
+    if (!book) {
       throw new HttpError(
         'Book not found',
         HttpStatusCodes.NOT_FOUND,
@@ -125,7 +115,7 @@ export const updateBookHelper = async (bid, updateData) => {
     }
 
     const mergedData = {
-      ...bookDoc.data(),
+      ...book,
       ...updateData,
       updatedAtString: new Date().toISOString(),
     };
@@ -136,13 +126,8 @@ export const updateBookHelper = async (bid, updateData) => {
       updatedBook[key] === undefined ? delete updatedBook[key] : {}
     );
 
-    await bookRef.update(updatedBook);
-    const fetchedUpdatedBook = await fetchBookById(bid);
-
- 
-
-    return fetchedUpdatedBook;
-
+    await bookCollection.doc(bid).update(updatedBook);
+    return await fetchBookById(bid);
   } catch (error) {
     if (error instanceof HttpError) throw error;
     throw new HttpError(
@@ -156,10 +141,10 @@ export const updateBookHelper = async (bid, updateData) => {
 
 export const deleteBookHelper = async (bid) => {
   try {
-    const bookRef = bookCollection.doc(bid);
-    const bookDoc = await bookRef.get();
+    const query = bookCollection.doc(bid);
+    const [book] = await executeQuery(query);
 
-    if (!bookDoc.exists) {
+    if (!book) {
       throw new HttpError(
         'Book not found',
         HttpStatusCodes.NOT_FOUND,
@@ -169,18 +154,16 @@ export const deleteBookHelper = async (bid) => {
     }
 
     const batch = bookCollection.firestore.batch();
-    batch.delete(bookRef);
+    batch.delete(bookCollection.doc(bid));
 
-    const userBooksSnapshot = await userBookCollection
-      .where('bid', '==', bid)
-      .get();
-    userBooksSnapshot.forEach((doc) => {
-      batch.delete(doc.ref);
+    const userBooksQuery = userBookCollection.where('bid', '==', bid);
+    const userBooks = await executeQuery(userBooksQuery);
+
+    userBooks.forEach((userBook) => {
+      batch.delete(userBookCollection.doc(userBook.id));
     });
 
     await batch.commit();
-
-
   } catch (error) {
     if (error instanceof HttpError) throw error;
     throw new HttpError(
@@ -194,11 +177,9 @@ export const deleteBookHelper = async (bid) => {
 
 export const checkBookExistsHelper = async (bid) => {
   try {
-    const bookDoc = await bookCollection.doc(bid).get();
-    const exists = bookDoc.exists;
-
-    return exists ? bookDoc.data() : null;
-
+    const query = bookCollection.doc(bid);
+    const [book] = await executeQuery(query);
+    return book || null;
   } catch (error) {
     throw new HttpError(
       'Error checking book existence',

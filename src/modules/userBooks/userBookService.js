@@ -1,6 +1,5 @@
 import db from '../../config/firebaseConfig.js';
 import HttpError from '../../errors/httpErrorModel.js';
-
 import {
   ErrorCodes,
   HttpStatusCodes,
@@ -15,9 +14,10 @@ const userBookCollection = db.collection('userBooks');
 
 export const fetchBookById = async (bid) => {
   try {
-    const bookDoc = await bookCollection.doc(bid).get();
+    const query = bookCollection.doc(bid);
+    const [book] = await executeQuery(query);
 
-    if (!bookDoc.exists) {
+    if (!book) {
       throw new HttpError(
         'Book not found',
         HttpStatusCodes.NOT_FOUND,
@@ -26,9 +26,7 @@ export const fetchBookById = async (bid) => {
       );
     }
 
-  
-
-    return bookDoc.data();
+    return book;
   } catch (error) {
     if (error instanceof HttpError) throw error;
     throw new HttpError(
@@ -42,9 +40,10 @@ export const fetchBookById = async (bid) => {
 
 export const fetchUserBookById = async (ubid) => {
   try {
-    const userBookDoc = await userBookCollection.doc(ubid).get();
+    const query = userBookCollection.doc(ubid);
+    const [userBook] = await executeQuery(query);
 
-    if (!userBookDoc.exists) {
+    if (!userBook) {
       throw new HttpError(
         'User book not found',
         HttpStatusCodes.NOT_FOUND,
@@ -53,10 +52,7 @@ export const fetchUserBookById = async (ubid) => {
       );
     }
 
-    const userBook = userBookDoc.data();
     const combinedBook = await combineBooksData(userBook);
-
- 
 
     return combinedBook;
   } catch (error) {
@@ -76,8 +72,6 @@ export const fetchUserBooks = async (uid) => {
     let userBooks = await executeQuery(query);
     userBooks = await combineBooksData(userBooks);
 
-  
-
     return userBooks;
   } catch (error) {
     if (error instanceof HttpError) throw error;
@@ -92,12 +86,12 @@ export const fetchUserBooks = async (uid) => {
 
 export const createUserBookHelper = async ({ uid, bid, kataloged }) => {
   try {
-    const existingBook = await userBookCollection
+    const query = userBookCollection
       .where('uid', '==', uid)
-      .where('bid', '==', bid)
-      .get();
+      .where('bid', '==', bid);
+    const existingBooks = await executeQuery(query);
 
-    if (!existingBook.empty) {
+    if (existingBooks.length > 0) {
       throw new HttpError(
         "This book already exists in the user's library",
         HttpStatusCodes.CONFLICT,
@@ -118,10 +112,7 @@ export const createUserBookHelper = async ({ uid, bid, kataloged }) => {
     await docRef.update({ ubid });
     const createdUserBook = await fetchUserBookById(ubid);
 
- 
-
     return createdUserBook;
-
   } catch (error) {
     if (error instanceof HttpError) throw error;
     throw new HttpError(
@@ -135,10 +126,10 @@ export const createUserBookHelper = async ({ uid, bid, kataloged }) => {
 
 export const updateUserBookHelper = async (ubid, updateData) => {
   try {
-    const userBookRef = userBookCollection.doc(ubid);
-    const userBookDoc = await userBookRef.get();
+    const query = userBookCollection.doc(ubid);
+    const [userBook] = await executeQuery(query);
 
-    if (!userBookDoc.exists) {
+    if (!userBook) {
       throw new HttpError(
         'User book not found',
         HttpStatusCodes.NOT_FOUND,
@@ -148,7 +139,7 @@ export const updateUserBookHelper = async (ubid, updateData) => {
     }
 
     const mergedData = {
-      ...userBookDoc.data(),
+      ...userBook,
       ...updateData,
       updatedAtString: new Date().toISOString(),
     };
@@ -159,11 +150,10 @@ export const updateUserBookHelper = async (ubid, updateData) => {
       updatedUserBook[key] === undefined ? delete updatedUserBook[key] : {}
     );
 
-    await userBookRef.update(updatedUserBook);
+    await userBookCollection.doc(ubid).update(updatedUserBook);
     const fetchedUpdatedUserBook = await fetchUserBookById(ubid);
 
     return fetchedUpdatedUserBook;
-
   } catch (error) {
     if (error instanceof HttpError) throw error;
     throw new HttpError(
@@ -177,10 +167,10 @@ export const updateUserBookHelper = async (ubid, updateData) => {
 
 export const deleteUserBookHelper = async (ubid) => {
   try {
-    const userBookRef = userBookCollection.doc(ubid);
-    const userBookDoc = await userBookRef.get();
+    const query = userBookCollection.doc(ubid);
+    const [userBook] = await executeQuery(query);
 
-    if (!userBookDoc.exists) {
+    if (!userBook) {
       throw new HttpError(
         'User book not found',
         HttpStatusCodes.NOT_FOUND,
@@ -189,9 +179,7 @@ export const deleteUserBookHelper = async (ubid) => {
       );
     }
 
-    await userBookRef.delete();
-
-
+    await userBookCollection.doc(ubid).delete();
   } catch (error) {
     if (error instanceof HttpError) throw error;
     throw new HttpError(
@@ -206,18 +194,16 @@ export const deleteUserBookHelper = async (ubid) => {
 const combineBookData = async (userBook) => {
   try {
     const bookData = await fetchBookById(userBook.bid);
-    
+
     return {
       ...bookData,
       ...userBook,
     };
-
   } catch (error) {
     if (
       error instanceof HttpError &&
       error.statusCode === HttpStatusCodes.NOT_FOUND
     ) {
-
       return {
         ...userBook,
         bookError: error.message,
@@ -241,9 +227,7 @@ export const combineBooksData = async (userBooks) => {
       booksToProcess.map(combineBookData)
     );
 
-
     return isArray ? combinedBooks : combinedBooks[0];
-
   } catch (error) {
     if (error instanceof HttpError) throw error;
     throw new HttpError(

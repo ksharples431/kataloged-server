@@ -1,21 +1,20 @@
 import db from '../../config/firebaseConfig.js';
 import HttpError from '../../errors/httpErrorModel.js';
-
 import {
   ErrorCodes,
   HttpStatusCodes,
 } from '../../errors/errorConstraints.js';
-import { generateId } from '../../utils/globalHelpers.js';
+import { generateId, executeQuery } from '../../utils/globalHelpers.js';
 
 const bookCollection = db.collection('books');
 
 export const fetchAllGenres = async () => {
   try {
-    const booksSnapshot = await bookCollection.get();
+    const query = bookCollection;
+    const books = await executeQuery(query);
     const genreMap = new Map();
 
-    booksSnapshot.forEach((doc) => {
-      const book = doc.data();
+    books.forEach((book) => {
       const genreName = book.genre;
 
       if (genreMap.has(genreName)) {
@@ -35,11 +34,7 @@ export const fetchAllGenres = async () => {
       }
     });
 
-    const genres = Array.from(genreMap.values());
-
-
-
-    return genres;
+    return Array.from(genreMap.values());
   } catch (error) {
     if (error instanceof HttpError) throw error;
     throw new HttpError(
@@ -53,11 +48,10 @@ export const fetchAllGenres = async () => {
 
 export const fetchGenreBooks = async (genre) => {
   try {
-    const booksSnapshot = await bookCollection
-      .where('genre', '==', genre)
-      .get();
+    const query = bookCollection.where('genre', '==', genre);
+    const genreBooks = await executeQuery(query);
 
-    if (booksSnapshot.empty) {
+    if (genreBooks.length === 0) {
       throw new HttpError(
         'No books found for this genre',
         HttpStatusCodes.NOT_FOUND,
@@ -65,9 +59,6 @@ export const fetchGenreBooks = async (genre) => {
         { genre }
       );
     }
-
-    let genreBooks = booksSnapshot.docs.map((doc) => doc.data());
-
 
     return genreBooks;
   } catch (error) {

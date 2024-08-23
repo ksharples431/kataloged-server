@@ -1,86 +1,63 @@
-import HttpError from '../../errors/httpErrorModel.js';
-import {
-  ErrorCodes,
-  HttpStatusCodes,
-} from '../../errors/errorConstraints.js';
 import { logEntry } from '../../config/cloudLoggingConfig.js';
-import { validateSortOptions, sortAuthors } from './authorHelpers.js';
-import { authorService } from './services/authorService.js';
+import {
+  getAuthorsQuerySchema,
+  getAuthorBooksQuerySchema,
+} from './authorModel.js';
+import {
+  validateInput,
+  sortBooks,
+  formatBookCoverResponse,
+} from '../../utils/globalHelpers.js';
+import {
+  fetchAllAuthors,
+  fetchAuthorBooks,
+} from './authorService.js';
 
 export const getAuthors = async (req, res) => {
-  try {
-    const { sortBy = 'name', order = 'asc' } = req.query;
+  validateInput(req.query, getAuthorsQuerySchema);
+  const { sortBy = 'name', order = 'asc' } = req.query;
 
-    validateSortOptions(sortBy, order);
+  let authors = await fetchAllAuthors();
+  authors = sortBooks(authors, sortBy, order);
 
-    let authors = await authorService.mapAuthorsFromBooks();
-    authors = sortAuthors(authors, sortBy, order);
+  await logEntry({
+    message: `Authors fetched and sorted`,
+    severity: 'INFO',
+    sortBy,
+    order,
+    authorCount: authors.length,
+  });
 
-    await logEntry({
-      message: `Authors fetched and sorted`,
-      severity: 'INFO',
-      sortBy,
-      order,
-      authorCount: authors.length,
-    });
-
-    res.status(200).json({
-      data: {
-        message: 'Authors fetched successfully',
-        authors,
-      },
-    });
-  } catch (error) {
-    if (error instanceof HttpError) throw error;
-    throw new HttpError(
-      'Failed to fetch authors',
-      HttpStatusCodes.INTERNAL_SERVER_ERROR,
-      ErrorCodes.DATABASE_ERROR,
-      {
-        sortBy: req.query.sortBy,
-        order: req.query.order,
-        error: error.message,
-      }
-    );
-  }
+  res.status(200).json({
+    data: {
+      message: 'Authors fetched successfully',
+      authors,
+    },
+  });
 };
 
-export const getBooksByAuthor = async (req, res) => {
-  try {
-    const { author } = req.params;
-    const { sortBy = 'title', order = 'asc' } = req.query;
-    validateSortOptions(sortBy, order);
+export const getAuthorBooks = async (req, res) => {
+  validateInput(req.query, getAuthorBooksQuerySchema);
+  const { author } = req.params;
+  const { sortBy = 'title', order = 'asc' } = req.query;
 
-    let authorBooks = await authorService.mapAuthorBooks(author);
-    authorBooks = sortAuthors(authorBooks, sortBy, order);
+  let authorBooks = await fetchAuthorBooks(author);
+  const sortedBooks = sortBooks(authorBooks, sortBy, order);
+  authorBooks = sortedBooks.map(formatBookCoverResponse);
 
-    await logEntry({
-      message: `Books by author fetched and sorted`,
-      severity: 'INFO',
-      author,
-      sortBy,
-      order,
-      bookCount: authorBooks.length,
-    });
+  await logEntry({
+    message: `Books by author fetched and sorted`,
+    severity: 'INFO',
+    author,
+    sortBy,
+    order,
+    bookCount: authorBooks.length,
+  });
 
-    res.status(200).json({
-      data: {
-        message: 'Books by author fetched successfully',
-        books: authorBooks,
-      },
-    });
-  } catch (error) {
-    if (error instanceof HttpError) throw error;
-    throw new HttpError(
-      'Failed to fetch books by author',
-      HttpStatusCodes.INTERNAL_SERVER_ERROR,
-      ErrorCodes.DATABASE_ERROR,
-      {
-        author: req.params.author,
-        sortBy: req.query.sortBy,
-        order: req.query.order,
-        error: error.message,
-      }
-    );
-  }
+  res.status(200).json({
+    data: {
+      message: 'Books by author fetched successfully',
+      books: authorBooks,
+    },
+  });
 };

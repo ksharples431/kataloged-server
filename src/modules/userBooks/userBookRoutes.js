@@ -4,7 +4,7 @@ import { validateRequest } from '../../middleware/validationMiddleware.js';
 import { asyncRouteHandler } from '../../errors/errorHandler.js';
 import { apiLimiter } from '../../middleware/rateLimitMiddleware.js';
 import {
-  addUserBookSchema,
+  createUserBookSchema,
   updateUserBookSchema,
 } from './userBookModel.js';
 import {
@@ -17,7 +17,6 @@ import {
 
 const router = express.Router();
 
-// Apply rate limiting to all user book routes
 router.use('/userBooks', apiLimiter);
 
 router.get(
@@ -30,7 +29,7 @@ router.get('/userBooks', verifyToken, asyncRouteHandler(getUserBooks));
 router.post(
   '/userBooks',
   verifyToken,
-  validateRequest(addUserBookSchema),
+  validateRequest(createUserBookSchema),
   asyncRouteHandler(createUserBook)
 );
 

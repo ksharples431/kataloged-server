@@ -1,18 +1,25 @@
 import express from 'express';
 import verifyToken from '../../middleware/tokenMiddleware.js';
+import { asyncRouteHandler } from '../../errors/errorHandler.js';
+import { apiLimiter } from '../../middleware/rateLimitMiddleware.js';
 import {
   getUserAuthors,
-  getUserBooksByAuthor,
+  getUserAuthorBooks,
 } from './userAuthorController.js';
 
 const router = express.Router();
 
-// User Author routes
-router.get('/userBooks/:uid/authors', verifyToken, getUserAuthors);
+router.use('/userBooks', apiLimiter);
+
 router.get(
   '/userBooks/:uid/authors/:author/books',
   verifyToken,
-  getUserBooksByAuthor
+  asyncRouteHandler(getUserAuthorBooks)
+);
+router.get(
+  '/userBooks/:uid/authors',
+  verifyToken,
+  asyncRouteHandler(getUserAuthors)
 );
 
 export default router;

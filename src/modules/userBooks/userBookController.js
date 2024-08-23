@@ -5,27 +5,36 @@ import {
   HttpStatusCodes,
 } from '../../errors/errorConstraints.js';
 import {
-  addUserBookSchema,
+  createUserBookSchema,
   updateUserBookSchema,
   getUserBooksQuerySchema,
 } from './userBookModel.js';
+import { formatUserBookDetailsResponse } from './userBookHelpers.js';
 import {
   validateInput,
-  validateSortOptions,
-  formatUserBookCoverResponse,
-  formatUserBookDetailsResponse,
-} from './userBookHelpers.js';
+  formatBookCoverResponse,
+  sortBooks,
+} from '../../utils/globalHelpers.js';
 import {
   fetchUserBookById,
   fetchUserBooks,
   createUserBookHelper,
   updateUserBookHelper,
   deleteUserBookHelper,
-} from './services/userBookService.js';
+} from './userBookService.js';
+
 
 export const getUserBookById = async (req, res) => {
   const { ubid } = req.params;
+  await logEntry({
+    message: `Attempting to fetch user book`,
+    severity: 'INFO',
+    ubid,
+  });
+  console.log(ubid)
+
   let userBook = await fetchUserBookById(ubid);
+
   if (!userBook) {
     throw new HttpError(
       'User book not found',
@@ -33,6 +42,7 @@ export const getUserBookById = async (req, res) => {
       ErrorCodes.RESOURCE_NOT_FOUND
     );
   }
+
   userBook = formatUserBookDetailsResponse(userBook);
 
   await logEntry({
@@ -51,13 +61,11 @@ export const getUserBookById = async (req, res) => {
 
 export const getUserBooks = async (req, res) => {
   validateInput(req.query, getUserBooksQuerySchema);
-  const { uid, sortBy = 'title', order = 'asc', full = false } = req.query;
-  validateSortOptions(sortBy, order);
+  const { uid, sortBy = 'title', order = 'asc' } = req.query;
 
   let userBooks = await fetchUserBooks(uid, sortBy, order);
-  if (!full) {
-    userBooks = userBooks.map(formatUserBookCoverResponse);
-  }
+  const sortedBooks = sortBooks(userBooks, sortBy, order);
+  userBooks = sortedBooks.map(formatBookCoverResponse);
 
   await logEntry({
     message: `User books fetched. Count: ${userBooks.length}`,
@@ -65,7 +73,6 @@ export const getUserBooks = async (req, res) => {
     uid,
     sortBy,
     order,
-    full,
   });
 
   res.status(200).json({
@@ -80,9 +87,10 @@ export const getUserBooks = async (req, res) => {
 };
 
 export const createUserBook = async (req, res) => {
-  validateInput(req.body, addUserBookSchema);
+  validateInput(req.body, createUserBookSchema);
+
   let userBook = await createUserBookHelper(req.body);
-  userBook = formatUserBookCoverResponse(userBook);
+  userBook = formatBookCoverResponse(userBook);
 
   await logEntry({
     message: `User book created: ${userBook.ubid}`,
@@ -102,8 +110,9 @@ export const updateUserBook = async (req, res) => {
   validateInput(req.body, updateUserBookSchema);
   const { ubid } = req.params;
   const updateData = req.body;
+
   let updatedUserBook = await updateUserBookHelper(ubid, updateData);
-  updatedUserBook = formatUserBookCoverResponse(updatedUserBook);
+  updatedUserBook = formatBookCoverResponse(updatedUserBook);
 
   await logEntry({
     message: `User book updated: ${ubid}`,
@@ -121,6 +130,7 @@ export const updateUserBook = async (req, res) => {
 
 export const deleteUserBook = async (req, res) => {
   const { ubid } = req.params;
+  
   await deleteUserBookHelper(ubid);
 
   await logEntry({

@@ -3,63 +3,48 @@ import verifyToken from '../../middleware/tokenMiddleware.js';
 import { validateRequest } from '../../middleware/validationMiddleware.js';
 import { asyncRouteHandler } from '../../errors/errorHandler.js';
 import { apiLimiter } from '../../middleware/rateLimitMiddleware.js';
+import { withLogging } from '../../middleware/loggingMiddleware.js';
+import { createBookSchema, updateBookSchema } from './bookModel.js';
 import {
-  createBookSchema,
-  updateBookSchema,
-  searchBookSchema,
-  generalSearchSchema,
-} from './bookModel.js';
-import {
+  checkBookExists,
   getBookById,
   getBooks,
   createBook,
   updateBook,
   deleteBook,
-  searchBook,
-  generalSearch,
-  searchGoogleBooks,
-  checkBookExists,
 } from './bookController.js';
 
 const router = express.Router();
 
-// Apply rate limiting to all book routes
 router.use('/books', apiLimiter);
 
 router.get(
-  '/books/search',
-  validateRequest(searchBookSchema, 'query'),
-  asyncRouteHandler(searchBook)
-);
-router.get(
-  '/books/google-search',
-  validateRequest(searchBookSchema, 'query'),
-  asyncRouteHandler(searchGoogleBooks)
-);
-router.get(
-  '/books/general-search',
-  validateRequest(generalSearchSchema, 'query'),
-  asyncRouteHandler(generalSearch)
+  '/books/check/:bid',
+  withLogging(asyncRouteHandler(checkBookExists))
 );
 
-router.get('/books/check/:bid', asyncRouteHandler(checkBookExists));
-router.get('/books/:bid', asyncRouteHandler(getBookById));
-router.get('/books', asyncRouteHandler(getBooks));
+router.get('/books/:bid', withLogging(asyncRouteHandler(getBookById)));
+
+router.get('/books', withLogging(asyncRouteHandler(getBooks)));
 
 router.post(
   '/books',
   verifyToken,
   validateRequest(createBookSchema),
-  asyncRouteHandler(createBook)
+  withLogging(asyncRouteHandler(createBook))
 );
 
 router.put(
   '/books/:bid',
   verifyToken,
   validateRequest(updateBookSchema),
-  asyncRouteHandler(updateBook)
+  withLogging(asyncRouteHandler(updateBook))
 );
 
-router.delete('/books/:bid', verifyToken, asyncRouteHandler(deleteBook));
+router.delete(
+  '/books/:bid',
+  verifyToken,
+  withLogging(asyncRouteHandler(deleteBook))
+);
 
 export default router;

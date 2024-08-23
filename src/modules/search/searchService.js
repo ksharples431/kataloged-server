@@ -1,8 +1,9 @@
-import HttpError from '../../../errors/httpErrorModel.js';
+import HttpError from '../../errors/httpErrorModel.js';
+import { logEntry } from '../../config/cloudLoggingConfig.js';
 import {
   ErrorCodes,
   HttpStatusCodes,
-} from '../../../errors/errorConstraints.js';
+} from '../../errors/errorConstraints.js';
 import {
   buildQuery,
   executeQuery,
@@ -10,15 +11,11 @@ import {
   buildRequestConfig,
   fetchBooksFromGoogleAPI,
   processApiResponse,
-  validateSearchParams,
-  validateGeneralSearchParams,
-} from '../bookHelpers.js';
-import { fetchUserBooks } from '../../userBooks/services/userBookService.js';
-import { logEntry } from '../../../config/cloudLoggingConfig.js';
+} from './searchHelpers.js';
+import { fetchUserBooks } from '../userBooks/services/userBookService.js';
 
 export async function searchBooksInDatabase(searchParams) {
   try {
-    validateSearchParams(searchParams);
     const query = buildQuery(searchParams);
     const results = await executeQuery(query);
 
@@ -72,7 +69,6 @@ export const searchBooksInGoogleAPI = async (
 
 export async function searchDatabaseGeneral(query) {
   try {
-    validateGeneralSearchParams(query);
     const searchQuery = buildGeneralSearchQuery(query);
     const results = await executeQuery(searchQuery);
 

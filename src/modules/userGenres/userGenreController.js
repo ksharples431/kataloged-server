@@ -1,78 +1,66 @@
-import HttpError from '../../errors/httpErrorModel.js';
-import { userGenreService } from './services/userGenreService.js';
-import { validateSortOptions } from './helpers/validationHelpers.js';
-import { sortGenres } from './helpers/sortingHelpers.js';
+import { logEntry } from '../../config/cloudLoggingConfig.js';
+import {
+  getUserGenresQuerySchema,
+  getUserGenreBooksQuerySchema,
+} from './userGenreModel.js';
+import {
+  validateInput,
+  sortBooks,
+  formatBookCoverResponse,
+} from '../../utils/globalHelpers.js';
+import {
+  fetchAllUserGenres,
+  fetchUserGenreBooks,
+} from './userGenreService.js';
 
-export const getUserGenres = async (req, res, next) => {
-  try {
-    const { uid } = req.params;
-    const { sortBy = 'name', order = 'asc' } = req.query;
+export const getUserGenres = async (req, res) => {
+  validateInput(req.query, getUserGenresQuerySchema);
+  const { uid } = req.params;
+  const { sortBy = 'name', order = 'asc' } = req.query;
 
-    validateSortOptions(sortBy, order);
+  let genres = await fetchAllUserGenres(uid);
+  genres = sortBooks(genres, sortBy, order);
 
-    let genres = await userGenreService.mapUserGenresFromBooks(uid);
-    genres = sortGenres(genres, sortBy, order);
+  await logEntry({
+    message: `User genres fetched and sorted`,
+    severity: 'INFO',
+    uid,
+    sortBy,
+    order,
+    genreCount: genres.length,
+  });
 
-    res.status(200).json({
-      data: {
-        message: 'User genres fetched successfully',
-        genres,
-      },
-    });
-  } catch (error) {
-    if (error instanceof HttpError) {
-      next(error);
-    } else {
-      next(
-        new HttpError(
-          'Failed to fetch user genres',
-          500,
-          'FETCH_USER_GENRES_ERROR',
-          {
-            uid: req.params.uid,
-            sortBy: req.query.sortBy,
-            order: req.query.order,
-            error: error.message,
-          }
-        )
-      );
-    }
-  }
+  res.status(200).json({
+    data: {
+      message: 'User genres fetched successfully',
+      genres,
+    },
+  });
 };
 
-export const getUserBooksByGenre = async (req, res, next) => {
-  try {
-    const { uid, genre } = req.params;
-    const { sortBy = 'title', order = 'asc' } = req.query;
-    validateSortOptions(sortBy, order);
+export const getUserGenreBooks = async (req, res) => {
+  validateInput(req.query, getUserGenreBooksQuerySchema);
+  const { uid, genre } = req.params;
+  const { sortBy = 'title', order = 'asc' } = req.query;
 
-    let genreBooks = await userGenreService.mapUserGenreBooks(uid, genre);
-    genreBooks = sortGenres(genreBooks, sortBy, order);
+  let genreBooks = await fetchUserGenreBooks(uid, genre);
+  const sortedBooks = sortBooks(genreBooks, sortBy, order);
+  genreBooks = sortedBooks.map(formatBookCoverResponse);
 
-    res.status(200).json({
-      data: {
-        message: 'User books by genre fetched successfully',
-        books: genreBooks,
-      },
-    });
-  } catch (error) {
-    if (error instanceof HttpError) {
-      next(error);
-    } else {
-      next(
-        new HttpError(
-          'Failed to fetch user books by genre',
-          500,
-          'FETCH_USER_GENRE_BOOKS_ERROR',
-          {
-            uid: req.params.uid,
-            genre: req.params.genre,
-            sortBy: req.query.sortBy,
-            order: req.query.order,
-            error: error.message,
-          }
-        )
-      );
-    }
-  }
+  await logEntry({
+    message: `User books by genre fetched and sorted`,
+    severity: 'INFO',
+    uid,
+    genre,
+    sortBy,
+    order,
+    bookCount: genreBooks.length,
+  });
+
+  res.status(200).json({
+    data: {
+      message: 'User books by genre fetched successfully',
+      books: genreBooks,
+    },
+  });
 };

@@ -117,3 +117,17 @@ export const notFound = (req, res, next) => {
     )
   );
 };
+
+export const withErrorLogging = (errorHandler) => {
+  return async (err, req, res, next) => {
+    await logEntry({
+      message: `Error occurred: ${err.message}`,
+      severity: 'ERROR',
+      error: err.message,
+      stack: err.stack,
+      method: req.method,
+      path: req.path,
+    });
+    return errorHandler(err, req, res, next);
+  };
+};

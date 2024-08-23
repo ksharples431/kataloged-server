@@ -1,35 +1,55 @@
 import HttpError from '../../errors/httpErrorModel.js';
-import {
-  validateSortOptions,
-  validateSearchParams,
-  validateGeneralSearchParams,
-  formatBookCoverResponse,
-  formatBookDetailsResponse,
-  buildGoogleQuery,
-} from './bookHelpers.js';
-import {
-  searchBooksInDatabase,
-  searchBooksInGoogleAPI,
-  searchDatabaseGeneral,
-  searchUserBooksByBids,
-} from './services/searchService.js';
-import {
-  fetchBookById,
-  fetchAllBooks,
-  createBookHelper,
-  updateBookHelper,
-  deleteBookHelper,
-  checkBookExistsHelper,
-} from './services/bookService.js';
 import { logEntry } from '../../config/cloudLoggingConfig.js';
 import {
   ErrorCodes,
   HttpStatusCodes,
 } from '../../errors/errorConstraints.js';
+import {
+  createBookSchema,
+  updateBookSchema,
+  getBooksQuerySchema,
+} from './bookModel.js';
+import {
+  formatBookDetailsResponse,
+} from './bookHelpers.js';
+import {
+  validateInput,
+  formatBookCoverResponse,
+  sortBooks
+} from '../../utils/globalHelpers.js';
+import {
+  checkBookExistsHelper,
+  fetchBookById,
+  fetchAllBooks,
+  createBookHelper,
+  updateBookHelper,
+  deleteBookHelper,
+} from './bookService.js';
+
+export const checkBookExists = async (req, res) => {
+  const { bid } = req.params;
+
+  const book = await checkBookExistsHelper(bid);
+
+  await logEntry({
+    message: `Book existence checked: ${bid}`,
+    severity: 'INFO',
+    exists: !!book,
+  });
+
+  res.status(200).json({
+    data: {
+      exists: !!book,
+      book: book,
+    },
+  });
+};
 
 export const getBookById = async (req, res) => {
   const { bid } = req.params;
+
   let book = await fetchBookById(bid);
+
   if (!book) {
     throw new HttpError(
       'Book not found',
@@ -37,6 +57,7 @@ export const getBookById = async (req, res) => {
       ErrorCodes.RESOURCE_NOT_FOUND
     );
   }
+
   book = formatBookDetailsResponse(book);
 
   await logEntry({
@@ -54,10 +75,12 @@ export const getBookById = async (req, res) => {
 };
 
 export const getBooks = async (req, res) => {
+  validateInput(req.query, getBooksQuerySchema);
   const { sortBy = 'title', order = 'asc' } = req.query;
-  validateSortOptions(sortBy, order);
-  let books = await fetchAllBooks(sortBy, order);
-  books = books.map(formatBookCoverResponse);
+
+  let books = await fetchAllBooks();
+  const sortedBooks = sortBooks(books, sortBy, order);
+  books = sortedBooks.map(formatBookCoverResponse);
 
   await logEntry({
     message: `Books fetched. Count: ${books.length}`,
@@ -68,13 +91,18 @@ export const getBooks = async (req, res) => {
 
   res.status(200).json({
     data: {
-      message: 'Books fetched successfully',
+      message:
+        books.length > 0
+          ? 'Books fetched successfully'
+          : "No books in the library",
       books,
     },
   });
 };
 
 export const createBook = async (req, res) => {
+  validateInput(req.body, createBookSchema);
+
   let book = await createBookHelper(req.body);
   book = formatBookCoverResponse(book);
 
@@ -93,8 +121,10 @@ export const createBook = async (req, res) => {
 };
 
 export const updateBook = async (req, res) => {
+  validateInput(req.body, updateBookSchema);
   const { bid } = req.params;
   const updateData = req.body;
+
   let updatedBook = await updateBookHelper(bid, updateData);
   updatedBook = formatBookCoverResponse(updatedBook);
 
@@ -114,6 +144,7 @@ export const updateBook = async (req, res) => {
 
 export const deleteBook = async (req, res) => {
   const { bid } = req.params;
+  
   await deleteBookHelper(bid);
 
   await logEntry({
@@ -128,91 +159,3 @@ export const deleteBook = async (req, res) => {
   });
 };
 
-export const searchBook = async (req, res) => {
-  const { title, author, isbn } = req.query;
-  validateSearchParams({ title, author, isbn });
-
-  let books = await searchBooksInDatabase({ title, author, isbn });
-
-  await logEntry({
-    message: `Book search performed. Results: ${books.length}`,
-    severity: 'INFO',
-    searchParams: { title, author, isbn },
-  });
-
-  res.status(200).json({
-    data: {
-      message: books.length > 0 ? 'Books found' : 'No books found',
-      books,
-    },
-  });
-};
-
-export const searchGoogleBooks = async (req, res) => {
-  const { title, author, isbn } = req.query;
-  validateSearchParams({ title, author, isbn });
-
-  const googleQuery = buildGoogleQuery({ title, author, isbn });
-  let books = await searchBooksInGoogleAPI(googleQuery);
-
-  await logEntry({
-    message: `Google Books search performed. Results: ${books.length}`,
-    severity: 'INFO',
-    searchParams: { title, author, isbn },
-  });
-
-  res.status(200).json({
-    data: {
-      message: books.length > 0 ? 'Books found' : 'No books found',
-      books,
-    },
-  });
-};
-
-export const generalSearch = async (req, res) => {
-  const { query, uid } = req.query;
-
-  validateGeneralSearchParams(query);
-
-  let allBooks = await searchDatabaseGeneral(query);
-  allBooks = allBooks.map(formatBookCoverResponse);
-
-  let userBooks = [];
-  if (uid && allBooks.length > 0) {
-    const bids = allBooks.map((book) => book.bid);
-    userBooks = await searchUserBooksByBids(uid, bids);
-  }
-
-  await logEntry({
-    message: `General search performed. Results: ${allBooks.length}`,
-    severity: 'INFO',
-    searchQuery: query,
-    uid: uid || 'Not provided',
-  });
-
-  res.status(200).json({
-    data: {
-      message: allBooks.length > 0 ? 'Books found' : 'No books found',
-      allBooks,
-      userBooks,
-    },
-  });
-};
-
-export const checkBookExists = async (req, res) => {
-  const { bid } = req.params;
-  const book = await checkBookExistsHelper(bid);
-
-  await logEntry({
-    message: `Book existence checked: ${bid}`,
-    severity: 'INFO',
-    exists: !!book,
-  });
-
-  res.status(200).json({
-    data: {
-      exists: !!book,
-      book: book,
-    },
-  });
-};

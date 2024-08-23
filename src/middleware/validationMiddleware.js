@@ -1,4 +1,4 @@
-import { validateInput } from '../modules/books/bookHelpers.js';
+import { validateInput } from '../utils/globalHelpers.js';
 
 export const validateRequest = (schema, type = 'body') => {
   return (req, res, next) => {

@@ -1,6 +1,6 @@
 import Joi from 'joi';
 
-export const addUserBookSchema = Joi.object({
+export const createUserBookSchema = Joi.object({
   bid: Joi.string().required(),
   uid: Joi.string().required(),
   kataloged: Joi.boolean().default(false),
@@ -38,5 +38,4 @@ export const getUserBooksQuerySchema = Joi.object({
     .valid('title', 'author', 'updatedAt')
     .default('title'),
   order: Joi.string().valid('asc', 'desc').default('asc'),
-  full: Joi.boolean().default(false),
 });

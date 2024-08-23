@@ -34,13 +34,9 @@ export const updateBookSchema = Joi.object({
   id: Joi.string(),
 }).unknown(false);
 
-export const searchBookSchema = Joi.object({
-  title: Joi.string(),
-  author: Joi.string(),
-  isbn: Joi.string(),
-}).or('title', 'author', 'isbn');
-
-export const generalSearchSchema = Joi.object({
-  query: Joi.string().required(),
-  uid: Joi.string(),
-});
+export const getBooksQuerySchema = Joi.object({
+  sortBy: Joi.string()
+    .valid('title', 'author', 'genre', 'updatedAt')
+    .default('title'),
+  order: Joi.string().valid('asc', 'desc').default('asc'),
+}).unknown(false);

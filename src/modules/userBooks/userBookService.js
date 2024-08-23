@@ -1,17 +1,14 @@
-import db from '../../../config/firebaseConfig.js';
-import HttpError from '../../../errors/httpErrorModel.js';
+import db from '../../config/firebaseConfig.js';
+import HttpError from '../../errors/httpErrorModel.js';
+import { logEntry } from '../../config/cloudLoggingConfig.js';
 import {
   ErrorCodes,
   HttpStatusCodes,
-} from '../../../errors/errorConstraints.js';
-import { logEntry } from '../../../config/cloudLoggingConfig.js';
+} from '../../errors/errorConstraints.js';
 import {
-  sortUserBooks,
-  validateSortOptions,
-  generateLowercaseFields,
   executeQuery,
-} from '../userBookHelpers.js';
-import { combineBooksData } from './combineBooksService.js';
+  generateLowercaseFields,
+} from '../../utils/globalHelpers.js';
 
 const bookCollection = db.collection('books');
 const userBookCollection = db.collection('userBooks');
@@ -19,6 +16,7 @@ const userBookCollection = db.collection('userBooks');
 export const fetchBookById = async (bid) => {
   try {
     const bookDoc = await bookCollection.doc(bid).get();
+
     if (!bookDoc.exists) {
       throw new HttpError(
         'Book not found',
@@ -49,6 +47,7 @@ export const fetchBookById = async (bid) => {
 export const fetchUserBookById = async (ubid) => {
   try {
     const userBookDoc = await userBookCollection.doc(ubid).get();
+
     if (!userBookDoc.exists) {
       throw new HttpError(
         'User book not found',
@@ -57,6 +56,7 @@ export const fetchUserBookById = async (ubid) => {
         { ubid }
       );
     }
+
     const userBook = userBookDoc.data();
     const combinedBook = await combineBooksData(userBook);
 
@@ -78,25 +78,16 @@ export const fetchUserBookById = async (ubid) => {
   }
 };
 
-export const fetchUserBooks = async (
-  uid,
-  sortBy = 'title',
-  order = 'asc'
-) => {
+export const fetchUserBooks = async (uid) => {
   try {
-    validateSortOptions(sortBy, order);
     const query = userBookCollection.where('uid', '==', uid);
     let userBooks = await executeQuery(query);
-
     userBooks = await combineBooksData(userBooks);
-    userBooks = sortUserBooks(userBooks, sortBy, order);
 
     await logEntry({
       message: `User books fetched and sorted`,
       severity: 'INFO',
       uid,
-      sortBy,
-      order,
       bookCount: userBooks.length,
     });
 
@@ -107,7 +98,7 @@ export const fetchUserBooks = async (
       'Error fetching user books',
       HttpStatusCodes.INTERNAL_SERVER_ERROR,
       ErrorCodes.DATABASE_ERROR,
-      { uid, sortBy, order, error: error.message }
+      { uid, error: error.message }
     );
   }
 };
@@ -149,6 +140,7 @@ export const createUserBookHelper = async ({ uid, bid, kataloged }) => {
     });
 
     return createdUserBook;
+
   } catch (error) {
     if (error instanceof HttpError) throw error;
     throw new HttpError(
@@ -197,6 +189,7 @@ export const updateUserBookHelper = async (ubid, updateData) => {
     });
 
     return fetchedUpdatedUserBook;
+
   } catch (error) {
     if (error instanceof HttpError) throw error;
     throw new HttpError(
@@ -229,6 +222,7 @@ export const deleteUserBookHelper = async (ubid) => {
       severity: 'INFO',
       ubid,
     });
+
   } catch (error) {
     if (error instanceof HttpError) throw error;
     throw new HttpError(
@@ -236,6 +230,68 @@ export const deleteUserBookHelper = async (ubid) => {
       HttpStatusCodes.INTERNAL_SERVER_ERROR,
       ErrorCodes.DATABASE_ERROR,
       { ubid, error: error.message }
+    );
+  }
+};
+
+const combineBookData = async (userBook) => {
+  try {
+    const bookData = await fetchBookById(userBook.bid);
+    
+    return {
+      ...bookData,
+      ...userBook,
+    };
+
+  } catch (error) {
+    if (
+      error instanceof HttpError &&
+      error.statusCode === HttpStatusCodes.NOT_FOUND
+    ) {
+      await logEntry({
+        message: `Book not found in user books`,
+        severity: 'WARNING',
+        ubid: userBook.ubid,
+        bid: userBook.bid,
+      });
+      return {
+        ...userBook,
+        bookError: error.message,
+      };
+    }
+    throw new HttpError(
+      `Failed to fetch book data for bid ${userBook.bid}`,
+      HttpStatusCodes.INTERNAL_SERVER_ERROR,
+      ErrorCodes.DATABASE_ERROR,
+      { bid: userBook.bid, error: error.message }
+    );
+  }
+};
+
+export const combineBooksData = async (userBooks) => {
+  try {
+    const isArray = Array.isArray(userBooks);
+    const booksToProcess = isArray ? userBooks : [userBooks];
+
+    const combinedBooks = await Promise.all(
+      booksToProcess.map(combineBookData)
+    );
+
+    await logEntry({
+      message: `Books data combined`,
+      severity: 'INFO',
+      count: combinedBooks.length,
+    });
+
+    return isArray ? combinedBooks : combinedBooks[0];
+
+  } catch (error) {
+    if (error instanceof HttpError) throw error;
+    throw new HttpError(
+      'Error combining books data',
+      HttpStatusCodes.INTERNAL_SERVER_ERROR,
+      ErrorCodes.DATABASE_ERROR,
+      { error: error.message }
     );
   }
 };

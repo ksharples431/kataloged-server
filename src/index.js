@@ -11,7 +11,7 @@ import {
   apiLimiter,
   authLimiter,
 } from './middleware/rateLimitMiddleware.js';
-import { asyncRouteHandler } from './errors/errorHandler.js';
+import { asyncRouteHandler, withErrorLogging } from './errors/errorHandler.js';
 import { logEntry } from './config/cloudLoggingConfig.js';
 // import { setHeaders } from './middleware/headersMiddleware.js';
 import authRoutes from './modules/auth/authRoutes.js';
@@ -78,6 +78,6 @@ app.use('/api', userGenreRoutes);
 app.use('/api', userRoutes);
 
 app.use(notFound);
-app.use(errorMiddleware);
+app.use(withErrorLogging(errorMiddleware));
 
 export default app;

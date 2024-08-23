@@ -1,11 +1,13 @@
-import db from '../../../config/firebaseConfig.js';
-import HttpError from '../../../errors/httpErrorModel.js';
-import { logEntry } from '../../../config/cloudLoggingConfig.js';
+import db from '../../config/firebaseConfig.js';
+import HttpError from '../../errors/httpErrorModel.js';
+import { logEntry } from '../../config/cloudLoggingConfig.js';
 import {
   ErrorCodes,
   HttpStatusCodes,
-} from '../../../errors/errorConstraints.js';
-import { generateLowercaseFields, validateSortOptions, sortBooks } from '../bookHelpers.js'
+} from '../../errors/errorConstraints.js';
+import {
+  generateLowercaseFields,
+} from '../../utils/globalHelpers.js';
 
 const bookCollection = db.collection('books');
 const userBookCollection = db.collection('userBooks');
@@ -13,6 +15,7 @@ const userBookCollection = db.collection('userBooks');
 export const fetchBookById = async (bid) => {
   try {
     const bookDoc = await bookCollection.doc(bid).get();
+
     if (!bookDoc.exists) {
       throw new HttpError(
         'Book not found',
@@ -29,6 +32,7 @@ export const fetchBookById = async (bid) => {
     });
 
     return bookDoc.data();
+
   } catch (error) {
     if (error instanceof HttpError) throw error;
     throw new HttpError(
@@ -40,29 +44,26 @@ export const fetchBookById = async (bid) => {
   }
 };
 
-export const fetchAllBooks = async (sortBy = 'title', order = 'asc') => {
+export const fetchAllBooks = async () => {
   try {
-    validateSortOptions(sortBy, order);
     const snapshot = await bookCollection.get();
     let books = snapshot.docs.map((doc) => doc.data());
-    const sortedBooks = sortBooks(books, sortBy, order);
 
     await logEntry({
       message: `All books fetched and sorted`,
       severity: 'INFO',
-      sortBy,
-      order,
-      bookCount: sortedBooks.length,
+      bookCount: books.length,
     });
 
-    return sortedBooks;
+    return books;
+
   } catch (error) {
     if (error instanceof HttpError) throw error;
     throw new HttpError(
       'Error fetching all books',
       HttpStatusCodes.INTERNAL_SERVER_ERROR,
       ErrorCodes.DATABASE_ERROR,
-      { sortBy, order, error: error.message }
+      { error: error.message }
     );
   }
 };
@@ -79,6 +80,7 @@ export const createBookHelper = async ({
       const existingBook = await bookCollection
         .where('isbn', '==', isbn)
         .get();
+        
       if (!existingBook.empty) {
         throw new HttpError(
           'A book with this ISBN already exists',
@@ -113,6 +115,7 @@ export const createBookHelper = async ({
     });
 
     return createdBook;
+
   } catch (error) {
     if (error instanceof HttpError) throw error;
     throw new HttpError(
@@ -161,6 +164,7 @@ export const updateBookHelper = async (bid, updateData) => {
     });
 
     return fetchedUpdatedBook;
+
   } catch (error) {
     if (error instanceof HttpError) throw error;
     throw new HttpError(
@@ -187,7 +191,6 @@ export const deleteBookHelper = async (bid) => {
     }
 
     const batch = bookCollection.firestore.batch();
-
     batch.delete(bookRef);
 
     const userBooksSnapshot = await userBookCollection
@@ -205,6 +208,7 @@ export const deleteBookHelper = async (bid) => {
       bid,
       deletedUserBooksCount: userBooksSnapshot.size,
     });
+
   } catch (error) {
     if (error instanceof HttpError) throw error;
     throw new HttpError(
@@ -229,6 +233,7 @@ export const checkBookExistsHelper = async (bid) => {
     });
 
     return exists ? bookDoc.data() : null;
+
   } catch (error) {
     throw new HttpError(
       'Error checking book existence',

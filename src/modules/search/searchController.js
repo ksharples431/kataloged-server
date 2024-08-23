@@ -1,9 +1,4 @@
-import HttpError from '../../errors/httpErrorModel.js';
-import { logEntry } from '../../config/cloudLoggingConfig.js';
-import {
-  ErrorCodes,
-  HttpStatusCodes,
-} from '../../errors/errorConstraints.js';
+
 import {
   validateInput,
   formatBookCoverResponse,
@@ -23,11 +18,7 @@ export const searchBook = async (req, res) => {
 
   let books = await searchBooksInDatabase({ title, author, isbn });
 
-  await logEntry({
-    message: `Book search performed. Results: ${books.length}`,
-    severity: 'INFO',
-    searchParams: { title, author, isbn },
-  });
+
 
   res.status(200).json({
     data: {
@@ -43,12 +34,6 @@ export const searchGoogleBooks = async (req, res) => {
 
   const googleQuery = buildGoogleQuery({ title, author, isbn });
   let books = await searchBooksInGoogleAPI(googleQuery);
-
-  await logEntry({
-    message: `Google Books search performed. Results: ${books.length}`,
-    severity: 'INFO',
-    searchParams: { title, author, isbn },
-  });
 
   res.status(200).json({
     data: {
@@ -71,12 +56,7 @@ export const generalSearch = async (req, res) => {
     userBooks = await searchUserBooksByBids(uid, bids);
   }
 
-  await logEntry({
-    message: `General search performed. Results: ${allBooks.length}`,
-    severity: 'INFO',
-    searchQuery: query,
-    uid: uid || 'Not provided',
-  });
+
 
   res.status(200).json({
     data: {

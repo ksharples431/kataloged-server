@@ -1,6 +1,6 @@
 import db from '../../config/firebaseConfig.js';
 import HttpError from '../../errors/httpErrorModel.js';
-import { logEntry } from '../../config/cloudLoggingConfig.js';
+
 import {
   ErrorCodes,
   HttpStatusCodes,
@@ -25,11 +25,6 @@ export const fetchBookById = async (bid) => {
       );
     }
 
-    await logEntry({
-      message: `Book fetched by ID`,
-      severity: 'INFO',
-      bid,
-    });
 
     return bookDoc.data();
 
@@ -48,12 +43,6 @@ export const fetchAllBooks = async () => {
   try {
     const snapshot = await bookCollection.get();
     let books = snapshot.docs.map((doc) => doc.data());
-
-    await logEntry({
-      message: `All books fetched and sorted`,
-      severity: 'INFO',
-      bookCount: books.length,
-    });
 
     return books;
 
@@ -80,7 +69,7 @@ export const createBookHelper = async ({
       const existingBook = await bookCollection
         .where('isbn', '==', isbn)
         .get();
-        
+
       if (!existingBook.empty) {
         throw new HttpError(
           'A book with this ISBN already exists',
@@ -106,13 +95,7 @@ export const createBookHelper = async ({
     await docRef.update({ bid });
     const createdBook = await fetchBookById(bid);
 
-    await logEntry({
-      message: `New book created`,
-      severity: 'INFO',
-      bid,
-      title,
-      author,
-    });
+
 
     return createdBook;
 
@@ -156,12 +139,7 @@ export const updateBookHelper = async (bid, updateData) => {
     await bookRef.update(updatedBook);
     const fetchedUpdatedBook = await fetchBookById(bid);
 
-    await logEntry({
-      message: `Book updated`,
-      severity: 'INFO',
-      bid,
-      updatedFields: Object.keys(updateData),
-    });
+ 
 
     return fetchedUpdatedBook;
 
@@ -202,12 +180,6 @@ export const deleteBookHelper = async (bid) => {
 
     await batch.commit();
 
-    await logEntry({
-      message: `Book and related user books deleted`,
-      severity: 'INFO',
-      bid,
-      deletedUserBooksCount: userBooksSnapshot.size,
-    });
 
   } catch (error) {
     if (error instanceof HttpError) throw error;
@@ -224,13 +196,6 @@ export const checkBookExistsHelper = async (bid) => {
   try {
     const bookDoc = await bookCollection.doc(bid).get();
     const exists = bookDoc.exists;
-
-    await logEntry({
-      message: `Book existence checked`,
-      severity: 'INFO',
-      bid,
-      exists,
-    });
 
     return exists ? bookDoc.data() : null;
 

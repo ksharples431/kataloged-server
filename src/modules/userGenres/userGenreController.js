@@ -1,4 +1,4 @@
-import { logEntry } from '../../config/cloudLoggingConfig.js';
+
 import {
   getUserGenresQuerySchema,
   getUserGenreBooksQuerySchema,
@@ -21,14 +21,6 @@ export const getUserGenres = async (req, res) => {
   let genres = await fetchAllUserGenres(uid);
   genres = sortBooks(genres, sortBy, order);
 
-  await logEntry({
-    message: `User genres fetched and sorted`,
-    severity: 'INFO',
-    uid,
-    sortBy,
-    order,
-    genreCount: genres.length,
-  });
 
   res.status(200).json({
     data: {
@@ -47,15 +39,6 @@ export const getUserGenreBooks = async (req, res) => {
   const sortedBooks = sortBooks(genreBooks, sortBy, order);
   genreBooks = sortedBooks.map(formatBookCoverResponse);
 
-  await logEntry({
-    message: `User books by genre fetched and sorted`,
-    severity: 'INFO',
-    uid,
-    genre,
-    sortBy,
-    order,
-    bookCount: genreBooks.length,
-  });
 
   res.status(200).json({
     data: {

@@ -4,7 +4,7 @@ import config from './config.js';
 let log;
 let metadata;
 
-if (config.server.env === 'development') {
+if (config.server.env === 'production') {
   try {
     const logging = new Logging({
       projectId: process.env.FB_PROJECT_ID,
@@ -14,6 +14,7 @@ if (config.server.env === 'development') {
     metadata = {
       resource: { type: 'global' },
     };
+    console.log('Connected to Cloud Logging');
   } catch (error) {
     console.error('Failed to initialize Cloud Logging:', error);
   }
@@ -22,7 +23,9 @@ if (config.server.env === 'development') {
 const fallbackLog = {
   entry: (metadata, data) => ({ metadata, ...data }),
   write: (entry) => {
-    console.log('Log Entry:', JSON.stringify(entry, null, 2));
+    if (entry.severity && entry.severity !== 'INFO') {
+      console.log('Log Entry:', JSON.stringify(entry, null, 2));
+    }
     return Promise.resolve();
   },
 };
@@ -33,9 +36,11 @@ export const logEntry = async (entry) => {
       await log.write(log.entry(metadata, entry));
     } catch (error) {
       console.error('Error writing to Cloud Logging:', error);
-      console.log('Fallback Log Entry:', JSON.stringify(entry, null, 2));
+      if (entry.severity !== 'INFO') {
+        console.log('Fallback Log Entry:', JSON.stringify(entry, null, 2));
+      }
     }
-  } else {
+  } else if (entry.severity !== 'INFO') {
     await fallbackLog.write(fallbackLog.entry(metadata, entry));
   }
 };

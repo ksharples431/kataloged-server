@@ -1,4 +1,3 @@
-import { logEntry } from '../../config/cloudLoggingConfig.js';
 import {
   getAuthorsQuerySchema,
   getAuthorBooksQuerySchema,
@@ -20,14 +19,6 @@ export const getAuthors = async (req, res) => {
   let authors = await fetchAllAuthors();
   authors = sortBooks(authors, sortBy, order);
 
-  await logEntry({
-    message: `Authors fetched and sorted`,
-    severity: 'INFO',
-    sortBy,
-    order,
-    authorCount: authors.length,
-  });
-
   res.status(200).json({
     data: {
       message: 'Authors fetched successfully',
@@ -44,15 +35,6 @@ export const getAuthorBooks = async (req, res) => {
   let authorBooks = await fetchAuthorBooks(author);
   const sortedBooks = sortBooks(authorBooks, sortBy, order);
   authorBooks = sortedBooks.map(formatBookCoverResponse);
-
-  await logEntry({
-    message: `Books by author fetched and sorted`,
-    severity: 'INFO',
-    author,
-    sortBy,
-    order,
-    bookCount: authorBooks.length,
-  });
 
   res.status(200).json({
     data: {

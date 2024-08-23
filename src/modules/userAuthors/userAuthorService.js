@@ -1,6 +1,6 @@
 import db from '../../config/firebaseConfig.js';
 import HttpError from '../../errors/httpErrorModel.js';
-import { logEntry } from '../../config/cloudLoggingConfig.js';
+
 import {
   ErrorCodes,
   HttpStatusCodes,
@@ -42,13 +42,7 @@ export const fetchAllUserAuthors = async (uid) => {
 
     const authors = Array.from(authorMap.values());
 
-    await logEntry({
-      message: 'User authors mapped from books',
-      severity: 'INFO',
-      uid,
-      authorCount: authors.length,
-    });
-
+  
     return authors;
   } catch (error) {
     if (error instanceof HttpError) throw error;
@@ -90,13 +84,7 @@ export const fetchUserAuthorBooks = async (uid, author) => {
       );
     }
 
-    await logEntry({
-      message: 'User author books mapped',
-      severity: 'INFO',
-      uid,
-      author,
-      bookCount: authorBooks.length,
-    });
+    
 
     return authorBooks;
   } catch (error) {

@@ -1,5 +1,4 @@
 import HttpError from '../../errors/httpErrorModel.js';
-import { logEntry } from '../../config/cloudLoggingConfig.js';
 import {
   ErrorCodes,
   HttpStatusCodes,
@@ -31,11 +30,6 @@ export const checkBookExists = async (req, res) => {
 
   const book = await checkBookExistsHelper(bid);
 
-  await logEntry({
-    message: `Book existence checked: ${bid}`,
-    severity: 'INFO',
-    exists: !!book,
-  });
 
   res.status(200).json({
     data: {
@@ -60,11 +54,7 @@ export const getBookById = async (req, res) => {
 
   book = formatBookDetailsResponse(book);
 
-  await logEntry({
-    message: `Book fetched: ${bid}`,
-    severity: 'INFO',
-    book: book,
-  });
+
 
   res.status(200).json({
     data: {
@@ -82,12 +72,7 @@ export const getBooks = async (req, res) => {
   const sortedBooks = sortBooks(books, sortBy, order);
   books = sortedBooks.map(formatBookCoverResponse);
 
-  await logEntry({
-    message: `Books fetched. Count: ${books.length}`,
-    severity: 'INFO',
-    sortBy,
-    order,
-  });
+
 
   res.status(200).json({
     data: {
@@ -106,11 +91,6 @@ export const createBook = async (req, res) => {
   let book = await createBookHelper(req.body);
   book = formatBookCoverResponse(book);
 
-  await logEntry({
-    message: `Book created: ${book.bid}`,
-    severity: 'INFO',
-    book: book,
-  });
 
   res.status(201).json({
     data: {
@@ -128,11 +108,6 @@ export const updateBook = async (req, res) => {
   let updatedBook = await updateBookHelper(bid, updateData);
   updatedBook = formatBookCoverResponse(updatedBook);
 
-  await logEntry({
-    message: `Book updated: ${bid}`,
-    severity: 'INFO',
-    book: updatedBook,
-  });
 
   res.status(200).json({
     data: {
@@ -146,11 +121,6 @@ export const deleteBook = async (req, res) => {
   const { bid } = req.params;
   
   await deleteBookHelper(bid);
-
-  await logEntry({
-    message: `Book deleted: ${bid}`,
-    severity: 'INFO',
-  });
 
   res.status(200).json({
     data: {

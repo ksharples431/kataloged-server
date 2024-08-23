@@ -11,7 +11,8 @@ import {
   apiLimiter,
   authLimiter,
 } from './middleware/rateLimitMiddleware.js';
-import { asyncRouteHandler, withErrorLogging } from './errors/errorHandler.js';
+import { asyncRouteHandler } from './errors/errorHandler.js';
+import { requestLoggingMiddleware } from './middleware/requestLoggingMiddleware.js';
 import { logEntry } from './config/cloudLoggingConfig.js';
 // import { setHeaders } from './middleware/headersMiddleware.js';
 import authRoutes from './modules/auth/authRoutes.js';
@@ -50,6 +51,7 @@ app.use(
 );
 app.options('*', cors());
 
+app.use(requestLoggingMiddleware);
 // Apply rate limiting to all routes
 app.use(apiLimiter);
 
@@ -78,6 +80,6 @@ app.use('/api', userGenreRoutes);
 app.use('/api', userRoutes);
 
 app.use(notFound);
-app.use(withErrorLogging(errorMiddleware));
+app.use(errorMiddleware);
 
 export default app;

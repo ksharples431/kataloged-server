@@ -1,6 +1,6 @@
 import db from '../../config/firebaseConfig.js';
 import HttpError from '../../errors/httpErrorModel.js';
-import { logEntry } from '../../config/cloudLoggingConfig.js';
+
 import {
   ErrorCodes,
   HttpStatusCodes,
@@ -26,11 +26,7 @@ export const fetchBookById = async (bid) => {
       );
     }
 
-    await logEntry({
-      message: `Book fetched by ID`,
-      severity: 'INFO',
-      bid,
-    });
+  
 
     return bookDoc.data();
   } catch (error) {
@@ -60,11 +56,7 @@ export const fetchUserBookById = async (ubid) => {
     const userBook = userBookDoc.data();
     const combinedBook = await combineBooksData(userBook);
 
-    await logEntry({
-      message: `User book fetched by ID`,
-      severity: 'INFO',
-      ubid,
-    });
+ 
 
     return combinedBook;
   } catch (error) {
@@ -84,12 +76,7 @@ export const fetchUserBooks = async (uid) => {
     let userBooks = await executeQuery(query);
     userBooks = await combineBooksData(userBooks);
 
-    await logEntry({
-      message: `User books fetched and sorted`,
-      severity: 'INFO',
-      uid,
-      bookCount: userBooks.length,
-    });
+  
 
     return userBooks;
   } catch (error) {
@@ -131,13 +118,7 @@ export const createUserBookHelper = async ({ uid, bid, kataloged }) => {
     await docRef.update({ ubid });
     const createdUserBook = await fetchUserBookById(ubid);
 
-    await logEntry({
-      message: `New user book created`,
-      severity: 'INFO',
-      ubid,
-      uid,
-      bid,
-    });
+ 
 
     return createdUserBook;
 
@@ -181,13 +162,6 @@ export const updateUserBookHelper = async (ubid, updateData) => {
     await userBookRef.update(updatedUserBook);
     const fetchedUpdatedUserBook = await fetchUserBookById(ubid);
 
-    await logEntry({
-      message: `User book updated`,
-      severity: 'INFO',
-      ubid,
-      updatedFields: Object.keys(updateData),
-    });
-
     return fetchedUpdatedUserBook;
 
   } catch (error) {
@@ -217,11 +191,6 @@ export const deleteUserBookHelper = async (ubid) => {
 
     await userBookRef.delete();
 
-    await logEntry({
-      message: `User book deleted`,
-      severity: 'INFO',
-      ubid,
-    });
 
   } catch (error) {
     if (error instanceof HttpError) throw error;
@@ -248,12 +217,7 @@ const combineBookData = async (userBook) => {
       error instanceof HttpError &&
       error.statusCode === HttpStatusCodes.NOT_FOUND
     ) {
-      await logEntry({
-        message: `Book not found in user books`,
-        severity: 'WARNING',
-        ubid: userBook.ubid,
-        bid: userBook.bid,
-      });
+
       return {
         ...userBook,
         bookError: error.message,
@@ -277,11 +241,6 @@ export const combineBooksData = async (userBooks) => {
       booksToProcess.map(combineBookData)
     );
 
-    await logEntry({
-      message: `Books data combined`,
-      severity: 'INFO',
-      count: combinedBooks.length,
-    });
 
     return isArray ? combinedBooks : combinedBooks[0];
 

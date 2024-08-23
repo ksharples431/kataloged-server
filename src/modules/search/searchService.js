@@ -1,5 +1,5 @@
 import HttpError from '../../errors/httpErrorModel.js';
-import { logEntry } from '../../config/cloudLoggingConfig.js';
+
 import {
   ErrorCodes,
   HttpStatusCodes,
@@ -19,12 +19,7 @@ export async function searchBooksInDatabase(searchParams) {
     const query = buildQuery(searchParams);
     const results = await executeQuery(query);
 
-    await logEntry({
-      message: `Database search performed`,
-      severity: 'INFO',
-      searchParams,
-      resultsCount: results.length,
-    });
+ 
 
     return results;
   } catch (error) {
@@ -47,13 +42,7 @@ export const searchBooksInGoogleAPI = async (
     const data = await fetchBooksFromGoogleAPI(config);
     const results = processApiResponse(data);
 
-    await logEntry({
-      message: `Google Books API search performed`,
-      severity: 'INFO',
-      googleQuery,
-      maxResults,
-      resultsCount: results.length,
-    });
+
 
     return results;
   } catch (error) {
@@ -72,12 +61,7 @@ export async function searchDatabaseGeneral(query) {
     const searchQuery = buildGeneralSearchQuery(query);
     const results = await executeQuery(searchQuery);
 
-    await logEntry({
-      message: `General database search performed`,
-      severity: 'INFO',
-      query,
-      resultsCount: results.length,
-    });
+
 
     return results;
   } catch (error) {
@@ -97,14 +81,6 @@ export async function searchUserBooksByBids(uid, bids) {
     const matchedUserBooks = allUserBooks.filter((userBook) =>
       bids.includes(userBook.bid)
     );
-
-    await logEntry({
-      message: `User books search by BIDs performed`,
-      severity: 'INFO',
-      uid,
-      totalUserBooks: allUserBooks.length,
-      matchedUserBooks: matchedUserBooks.length,
-    });
 
     return matchedUserBooks;
   } catch (error) {

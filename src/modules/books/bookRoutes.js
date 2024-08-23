@@ -3,8 +3,10 @@ import verifyToken from '../../middleware/tokenMiddleware.js';
 import { validateRequest } from '../../middleware/validationMiddleware.js';
 import { asyncRouteHandler } from '../../errors/errorHandler.js';
 import { apiLimiter } from '../../middleware/rateLimitMiddleware.js';
-import { withLogging } from '../../middleware/loggingMiddleware.js';
-import { createBookSchema, updateBookSchema } from './bookModel.js';
+import {
+  createBookSchema,
+  updateBookSchema,
+} from './bookModel.js';
 import {
   checkBookExists,
   getBookById,
@@ -18,33 +20,25 @@ const router = express.Router();
 
 router.use('/books', apiLimiter);
 
-router.get(
-  '/books/check/:bid',
-  withLogging(asyncRouteHandler(checkBookExists))
-);
+router.get('/books/check/:bid', asyncRouteHandler(checkBookExists));
 
-router.get('/books/:bid', withLogging(asyncRouteHandler(getBookById)));
-
-router.get('/books', withLogging(asyncRouteHandler(getBooks)));
+router.get('/books/:bid', asyncRouteHandler(getBookById));
+router.get('/books', asyncRouteHandler(getBooks));
 
 router.post(
   '/books',
   verifyToken,
   validateRequest(createBookSchema),
-  withLogging(asyncRouteHandler(createBook))
+  asyncRouteHandler(createBook)
 );
 
 router.put(
   '/books/:bid',
   verifyToken,
   validateRequest(updateBookSchema),
-  withLogging(asyncRouteHandler(updateBook))
+  asyncRouteHandler(updateBook)
 );
 
-router.delete(
-  '/books/:bid',
-  verifyToken,
-  withLogging(asyncRouteHandler(deleteBook))
-);
+router.delete('/books/:bid', verifyToken, asyncRouteHandler(deleteBook));
 
 export default router;

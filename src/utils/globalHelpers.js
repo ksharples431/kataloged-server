@@ -1,6 +1,6 @@
 import hashSum from 'hash-sum';
 import HttpError from '../errors/httpErrorModel.js';
-import { logEntry } from '../config/cloudLoggingConfig.js';
+
 import {
   ErrorCodes,
   HttpStatusCodes,
@@ -67,8 +67,8 @@ export const formatBookCoverResponse = (book) => {
   }
   return {
     author: book.author,
-    bid: book.id ? book.id : undefined,
-    ubid: book.ubid ? book.ubid : undefined,
+    bid: book.bid,
+    ubid: book.ubid,
     imagePath: book.imagePath,
     title: book.title,
   };
@@ -144,13 +144,7 @@ export const sortBooks = (items, sortBy, order) => {
 
   const sortedItems = items.sort(compareFunction);
 
-  logEntry({
-    message: 'Items sorted',
-    severity: 'INFO',
-    sortBy,
-    order,
-    itemCount: sortedItems.length,
-  }).catch(console.error);
+
 
   return sortedItems;
 };

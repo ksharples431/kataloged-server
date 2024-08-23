@@ -1,6 +1,5 @@
 import db from '../../config/firebaseConfig.js';
 import HttpError from '../../errors/httpErrorModel.js';
-import { logEntry } from '../../config/cloudLoggingConfig.js';
 import {
   ErrorCodes,
   HttpStatusCodes,
@@ -42,12 +41,7 @@ export const fetchAllUserGenres = async (uid) => {
 
     const genres = Array.from(genreMap.values());
 
-    await logEntry({
-      message: 'User genres mapped from books',
-      severity: 'INFO',
-      uid,
-      genreCount: genres.length,
-    });
+
 
     return genres;
   } catch (error) {
@@ -90,13 +84,6 @@ export const fetchUserGenreBooks = async (uid, genre) => {
       );
     }
 
-    await logEntry({
-      message: 'User genre books mapped',
-      severity: 'INFO',
-      uid,
-      genre,
-      bookCount: genreBooks.length,
-    });
 
     return genreBooks;
   } catch (error) {

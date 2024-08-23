@@ -1,5 +1,5 @@
 import HttpError from '../../errors/httpErrorModel.js';
-import { logEntry } from '../../config/cloudLoggingConfig.js';
+
 import {
   ErrorCodes,
   HttpStatusCodes,
@@ -26,12 +26,7 @@ import {
 
 export const getUserBookById = async (req, res) => {
   const { ubid } = req.params;
-  await logEntry({
-    message: `Attempting to fetch user book`,
-    severity: 'INFO',
-    ubid,
-  });
-  console.log(ubid)
+
 
   let userBook = await fetchUserBookById(ubid);
 
@@ -45,11 +40,7 @@ export const getUserBookById = async (req, res) => {
 
   userBook = formatUserBookDetailsResponse(userBook);
 
-  await logEntry({
-    message: `User book fetched: ${ubid}`,
-    severity: 'INFO',
-    userBook: userBook,
-  });
+
 
   res.status(200).json({
     data: {
@@ -67,13 +58,6 @@ export const getUserBooks = async (req, res) => {
   const sortedBooks = sortBooks(userBooks, sortBy, order);
   userBooks = sortedBooks.map(formatBookCoverResponse);
 
-  await logEntry({
-    message: `User books fetched. Count: ${userBooks.length}`,
-    severity: 'INFO',
-    uid,
-    sortBy,
-    order,
-  });
 
   res.status(200).json({
     data: {
@@ -92,11 +76,6 @@ export const createUserBook = async (req, res) => {
   let userBook = await createUserBookHelper(req.body);
   userBook = formatBookCoverResponse(userBook);
 
-  await logEntry({
-    message: `User book created: ${userBook.ubid}`,
-    severity: 'INFO',
-    userBook: userBook,
-  });
 
   res.status(201).json({
     data: {
@@ -114,11 +93,6 @@ export const updateUserBook = async (req, res) => {
   let updatedUserBook = await updateUserBookHelper(ubid, updateData);
   updatedUserBook = formatBookCoverResponse(updatedUserBook);
 
-  await logEntry({
-    message: `User book updated: ${ubid}`,
-    severity: 'INFO',
-    userBook: updatedUserBook,
-  });
 
   res.status(200).json({
     data: {
@@ -133,10 +107,7 @@ export const deleteUserBook = async (req, res) => {
   
   await deleteUserBookHelper(ubid);
 
-  await logEntry({
-    message: `User book deleted: ${ubid}`,
-    severity: 'INFO',
-  });
+
 
   res.status(200).json({
     data: {

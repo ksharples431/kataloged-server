@@ -62,12 +62,12 @@ export const handleError = (err, req, res, next) => {
   }
 
   logEntry({
-    message: `Error: ${response.message}`,
+    responseMessage: `Error: ${response.message}`,
+    errMessage: err.message,
     severity: 'ERROR',
-    error: response,
-    url: req.originalUrl,
-    method: req.method,
-    ip: req.ip,
+    errorCode: err.errorCode,
+    stack: process.env.NODE_ENV !== 'production' ? err.stack : undefined,
+    requestId: req.id,
     userId: req.user?.uid || 'unauthenticated',
   }).catch(console.error);
 
@@ -116,18 +116,4 @@ export const notFound = (req, res, next) => {
       ErrorCodes.RESOURCE_NOT_FOUND
     )
   );
-};
-
-export const withErrorLogging = (errorHandler) => {
-  return async (err, req, res, next) => {
-    await logEntry({
-      message: `Error occurred: ${err.message}`,
-      severity: 'ERROR',
-      error: err.message,
-      stack: err.stack,
-      method: req.method,
-      path: req.path,
-    });
-    return errorHandler(err, req, res, next);
-  };
 };

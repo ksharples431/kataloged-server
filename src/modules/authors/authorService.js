@@ -1,6 +1,5 @@
 import db from '../../config/firebaseConfig.js';
 import HttpError from '../../errors/httpErrorModel.js';
-import { logEntry } from '../../config/cloudLoggingConfig.js';
 import {
   ErrorCodes,
   HttpStatusCodes,
@@ -37,12 +36,6 @@ export const fetchAllAuthors = async () => {
 
     const authors = Array.from(authorMap.values());
 
-    await logEntry({
-      message: `All authors fetched and sorted`,
-      severity: 'INFO',
-      authorCount: authors.length,
-    });
-
     return authors;
   } catch (error) {
     if (error instanceof HttpError) throw error;
@@ -71,13 +64,6 @@ export const fetchAuthorBooks = async (author) => {
     }
 
     let authorBooks = booksSnapshot.docs.map((doc) => doc.data());
-
-    await logEntry({
-      message: `All author books fetched and sorted`,
-      severity: 'INFO',
-      author,
-      bookCount: authorBooks.length,
-    });
 
     return authorBooks;
   } catch (error) {

@@ -1,5 +1,6 @@
 import hashSum from 'hash-sum';
 import HttpError from '../errors/httpErrorModel.js';
+import admin from 'firebase-admin';
 
 import {
   ErrorCodes,
@@ -150,10 +151,39 @@ export const sortBooks = (items, sortBy, order) => {
 };
 
 // Database Helpers
-export const executeQuery = async (query) => {
+// export const executeQuery = async (query) => {
+//   try {
+//     const snapshot = await query.get();
+//     return snapshot.docs.map((doc) => doc.data());
+//   } catch (error) {
+//     throw new HttpError(
+//       'Error executing database query',
+//       HttpStatusCodes.INTERNAL_SERVER_ERROR,
+//       ErrorCodes.DATABASE_ERROR,
+//       { error: error.message }
+//     );
+//   }
+// };
+
+export const executeQuery = async (queryOrDocRef) => {
   try {
-    const snapshot = await query.get();
-    return snapshot.docs.map((doc) => doc.data());
+    let result;
+    if (queryOrDocRef instanceof admin.firestore.Query) {
+      // It's a query
+      const snapshot = await queryOrDocRef.get();
+      result = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    } else if (
+      queryOrDocRef instanceof admin.firestore.DocumentReference
+    ) {
+      // It's a document reference
+      const doc = await queryOrDocRef.get();
+      result = doc.exists ? [{ id: doc.id, ...doc.data() }] : [];
+    } else {
+      throw new Error(
+        'Invalid input: expected a Firestore query or document reference'
+      );
+    }
+    return result;
   } catch (error) {
     throw new HttpError(
       'Error executing database query',

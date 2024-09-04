@@ -16,7 +16,8 @@ import {
   ErrorCodes,
   getErrorCategory,
 } from './errorConstraints.js';
-import { logEntry } from '../config/cloudLoggingConfig.js';
+import { logEntry, loggingConfig } from '../config/cloudLoggingConfig.js';
+import { getSeverity } from './errorLogger.js';
 
 export const handleError = (err, req, res, next) => {
   console.error('Original error:', err);
@@ -61,15 +62,23 @@ export const handleError = (err, req, res, next) => {
     response.details = error.details;
   }
 
-  logEntry({
-    responseMessage: `Error: ${response.message}`,
-    errMessage: err.message,
-    severity: 'ERROR',
-    errorCode: err.errorCode,
-    stack: process.env.NODE_ENV !== 'production' ? err.stack : undefined,
-    requestId: req.id,
-    userId: req.user?.uid || 'unauthenticated',
-  }).catch(console.error);
+  const severity = getSeverity(response.category);
+
+  if (
+    !loggingConfig.errorOnly ||
+    loggingConfig.logLevels.includes(severity)
+  ) {
+    logEntry({
+      severity,
+      message: `Error: ${response.message}`,
+      errorCode: response.errorCode,
+      stack: !isProduction ? error.stack : undefined,
+      requestId: req.id,
+      userId: req.user?.uid || 'unauthenticated',
+      category: response.category,
+      statusCode: response.statusCode,
+    }).catch(console.error);
+  }
 
   res.status(response.statusCode).json(response);
 };

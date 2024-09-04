@@ -36,6 +36,7 @@ const verifyToken = async (req, res, next) => {
   } catch (error) {
     console.error('Token verification error:', error);
     error.name = 'FirebaseAuthError';
+    error.originalError = error; 
     next(error);
   }
 };

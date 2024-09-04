@@ -170,6 +170,14 @@ export const mapAxiosErrorToHttpError = (err, apiName = 'API') => {
 
 // Map Firebase errors to HttpErrors
 export const mapFirebaseErrorToHttpError = (err) => {
+  // If the error is already a HttpError, return it
+  if (err instanceof HttpError) {
+    return err;
+  }
+
+  // Use the original error if it exists
+  const error = err.originalError || err;
+
   const errorMap = {
     'auth/id-token-expired': createHttpError(
       'Token has expired',
@@ -274,11 +282,14 @@ export const mapFirebaseErrorToHttpError = (err) => {
   };
 
   return (
-    errorMap[err.code] ||
+    errorMap[error.code] ||
     createHttpError(
-      err.message || 'Firebase Authentication error',
-      HttpStatusCodes.INTERNAL_SERVER_ERROR,
-      ErrorCodes.FIREBASE_AUTH_ERROR
+      error.message || 'Firebase Authentication error',
+      error.statusCode || HttpStatusCodes.INTERNAL_SERVER_ERROR,
+      ErrorCodes.FIREBASE_AUTH_ERROR,
+      null,
+      null,
+      error.stack
     )
   );
 };

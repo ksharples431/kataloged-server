@@ -1,4 +1,4 @@
-import { log, metadata } from '../config/cloudLoggingConfig.js';
+import { loggingConfig } from '../config/cloudLoggingConfig.js';
 import { ErrorCategories, getErrorCategory } from './errorConstraints.js';
 
 const errorLogs = new Map();
@@ -22,7 +22,7 @@ const shouldLogError = (errorKey) => {
   return true;
 };
 
-const getSeverity = (category) => {
+export const getSeverity = (category) => {
   switch (category) {
     case ErrorCategories.SERVER_ERROR.INTERNAL:
     case ErrorCategories.SERVER_ERROR.DATABASE:
@@ -53,14 +53,10 @@ export const logError = (error, req) => {
     const severity = getSeverity(category);
 
     if (
-      ![
-        SeverityLevels.CRITICAL,
-        SeverityLevels.ERROR,
-        SeverityLevels.WARNING,
-        SeverityLevels.NOTICE,
-      ].includes(severity)
+      loggingConfig.errorOnly &&
+      !loggingConfig.logLevels.includes(severity)
     ) {
-      return; // Skip logging
+      return; // Skip non-error logs in error-only mode
     }
 
     const logEntry = {
@@ -109,7 +105,8 @@ export const logError = (error, req) => {
       logEntry.requestBody = req.body;
     }
 
-    log.write(log.entry(metadata, logEntry)).catch(console.error);
+    logEntry(logEntry).catch(console.error);
+    
 
     // Additional actions based on severity
     if (severity === 'CRITICAL') {

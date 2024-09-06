@@ -1,8 +1,9 @@
 import db from '../../config/firebaseConfig.js';
-import HttpError from '../../errors/httpErrorModel.js';
+import { createCustomError } from '../../errors/customError.js';
 import {
   ErrorCodes,
   HttpStatusCodes,
+  ErrorCategories,
 } from '../../errors/errorConstraints.js';
 import { generateId, executeQuery } from '../../utils/globalHelpers.js';
 import { combineBooksData } from '../userBooks/userBookService.js';
@@ -38,12 +39,13 @@ export const fetchAllUserAuthors = async (uid) => {
 
     return Array.from(authorMap.values());
   } catch (error) {
-    if (error instanceof HttpError) throw error;
-    throw new HttpError(
+    if (error.name === 'CustomError') throw error;
+    throw createCustomError(
       'Failed to map user authors from books',
       HttpStatusCodes.INTERNAL_SERVER_ERROR,
       ErrorCodes.DATABASE_ERROR,
-      { uid, error: error.message }
+      { uid, error: error.message },
+      { category: ErrorCategories.SERVER_ERROR.DATABASE }
     );
   }
 };
@@ -54,11 +56,12 @@ export const fetchUserAuthorBooks = async (uid, author) => {
     const userBooks = await executeQuery(query);
 
     if (userBooks.length === 0) {
-      throw new HttpError(
+      throw createCustomError(
         'No books found for this user',
         HttpStatusCodes.NOT_FOUND,
         ErrorCodes.RESOURCE_NOT_FOUND,
-        { uid }
+        { uid },
+        { category: ErrorCategories.CLIENT_ERROR.NOT_FOUND }
       );
     }
 
@@ -68,22 +71,24 @@ export const fetchUserAuthorBooks = async (uid, author) => {
     );
 
     if (authorBooks.length === 0) {
-      throw new HttpError(
+      throw createCustomError(
         'No books found for this author',
         HttpStatusCodes.NOT_FOUND,
         ErrorCodes.RESOURCE_NOT_FOUND,
-        { uid, author }
+        { uid, author },
+        { category: ErrorCategories.CLIENT_ERROR.NOT_FOUND }
       );
     }
 
     return authorBooks;
   } catch (error) {
-    if (error instanceof HttpError) throw error;
-    throw new HttpError(
+    if (error.name === 'CustomError') throw error;
+    throw createCustomError(
       'Failed to map books for user and author',
       HttpStatusCodes.INTERNAL_SERVER_ERROR,
       ErrorCodes.DATABASE_ERROR,
-      { uid, author, error: error.message }
+      { uid, author, error: error.message },
+      { category: ErrorCategories.SERVER_ERROR.DATABASE }
     );
   }
 };

@@ -1,21 +1,23 @@
 import hashSum from 'hash-sum';
-import HttpError from '../errors/httpErrorModel.js';
+import { createCustomError } from '../errors/customError.js';
 import admin from 'firebase-admin';
 
 import {
   ErrorCodes,
   HttpStatusCodes,
+  ErrorCategories,
 } from '../errors/errorConstraints.js';
 
 // Validation Helpers
 export const validateInput = (data, schema) => {
   const { error } = schema.validate(data);
   if (error) {
-    throw new HttpError(
+    throw createCustomError(
       error.details[0].message,
       HttpStatusCodes.BAD_REQUEST,
       ErrorCodes.INVALID_INPUT,
-      { data }
+      { data },
+      { category: ErrorCategories.CLIENT_ERROR.VALIDATION }
     );
   }
 };
@@ -30,20 +32,22 @@ export const generateId = (input) => {
   } else if (typeof input === 'object' && input !== null) {
     // If input is an object (e.g., book data)
     if (!input.id || !input.etag) {
-      throw new HttpError(
+      throw createCustomError(
         'Invalid object for ID generation: missing id or etag',
         HttpStatusCodes.BAD_REQUEST,
         ErrorCodes.INVALID_INPUT,
-        { input }
+        { input },
+        { category: ErrorCategories.CLIENT_ERROR.VALIDATION }
       );
     }
     uniqueString = `${input.id}-${input.etag}-${Date.now()}`;
   } else {
-    throw new HttpError(
+    throw createCustomError(
       'Invalid input for ID generation: must be a string or an object',
       HttpStatusCodes.BAD_REQUEST,
       ErrorCodes.INVALID_INPUT,
-      { input }
+      { input },
+      { category: ErrorCategories.CLIENT_ERROR.VALIDATION }
     );
   }
 
@@ -59,11 +63,12 @@ export const findISBN13 = (industryIdentifiers) => {
 // Returns book card details
 export const formatBookCoverResponse = (book) => {
   if (!book || typeof book !== 'object') {
-    throw new HttpError(
+    throw createCustomError(
       'Invalid book object',
       HttpStatusCodes.INTERNAL_SERVER_ERROR,
       ErrorCodes.INVALID_INPUT,
-      { title: book?.title }
+      { title: book?.title },
+      { category: ErrorCategories.SERVER_ERROR.INTERNAL }
     );
   }
   return {
@@ -78,11 +83,12 @@ export const formatBookCoverResponse = (book) => {
 // Saves lowercase title and author for create and update books
 export const generateLowercaseFields = (book) => {
   if (!book || typeof book !== 'object') {
-    throw new HttpError(
+    throw createCustomError(
       'Invalid book object',
       HttpStatusCodes.INTERNAL_SERVER_ERROR,
       ErrorCodes.INVALID_INPUT,
-      { title: book.title }
+      { title: book?.title },
+      { category: ErrorCategories.SERVER_ERROR.INTERNAL }
     );
   }
   return {
@@ -132,11 +138,12 @@ export const sortBooks = (items, sortBy, order) => {
         comparison = (a.bookCount || 0) - (b.bookCount || 0);
         break;
       default:
-        throw new HttpError(
+        throw createCustomError(
           'Invalid sort field',
           HttpStatusCodes.BAD_REQUEST,
           ErrorCodes.INVALID_INPUT,
-          { sortBy }
+          { sortBy },
+          { category: ErrorCategories.CLIENT_ERROR.VALIDATION }
         );
     }
 
@@ -145,26 +152,10 @@ export const sortBooks = (items, sortBy, order) => {
 
   const sortedItems = items.sort(compareFunction);
 
-
-
   return sortedItems;
 };
 
 // Database Helpers
-// export const executeQuery = async (query) => {
-//   try {
-//     const snapshot = await query.get();
-//     return snapshot.docs.map((doc) => doc.data());
-//   } catch (error) {
-//     throw new HttpError(
-//       'Error executing database query',
-//       HttpStatusCodes.INTERNAL_SERVER_ERROR,
-//       ErrorCodes.DATABASE_ERROR,
-//       { error: error.message }
-//     );
-//   }
-// };
-
 export const executeQuery = async (queryOrDocRef) => {
   try {
     let result;
@@ -185,11 +176,12 @@ export const executeQuery = async (queryOrDocRef) => {
     }
     return result;
   } catch (error) {
-    throw new HttpError(
+    throw createCustomError(
       'Error executing database query',
       HttpStatusCodes.INTERNAL_SERVER_ERROR,
       ErrorCodes.DATABASE_ERROR,
-      { error: error.message }
+      { error: error.message },
+      { category: ErrorCategories.SERVER_ERROR.DATABASE }
     );
   }
 };

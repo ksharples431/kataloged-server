@@ -1,9 +1,10 @@
 import axios from 'axios';
 import db from '../../config/firebaseConfig.js';
-import HttpError from '../../errors/httpErrorModel.js';
+import { createCustomError } from '../../errors/customError.js';
 import {
   ErrorCodes,
   HttpStatusCodes,
+  ErrorCategories,
 } from '../../errors/errorConstraints.js';
 import { generateId, findISBN13 } from '../../utils/globalHelpers.js';
 
@@ -49,11 +50,12 @@ export const buildGoogleQuery = ({ title, author, isbn }) => {
   } else if (author) {
     return `inauthor:${author}`;
   }
-  throw new HttpError(
+  throw createCustomError(
     'Invalid search parameters',
     HttpStatusCodes.BAD_REQUEST,
     ErrorCodes.INVALID_INPUT,
-    { title, author, isbn }
+    { title, author, isbn },
+    { category: ErrorCategories.CLIENT_ERROR.VALIDATION }
   );
 };
 
@@ -84,11 +86,12 @@ export const buildGeneralSearchQuery = (query) => {
       resolve(results);
     } catch (error) {
       reject(
-        new HttpError(
+        createCustomError(
           'Error building general search query',
           HttpStatusCodes.INTERNAL_SERVER_ERROR,
           ErrorCodes.DATABASE_ERROR,
-          { query, error: error.message }
+          { query, error: error.message },
+          { category: ErrorCategories.SERVER_ERROR.DATABASE }
         )
       );
     }
@@ -107,11 +110,12 @@ export const executeQuery = async (query) => {
       return snapshot.docs.map((doc) => doc.data());
     }
   } catch (error) {
-    throw new HttpError(
+    throw createCustomError(
       'Error executing database query',
       HttpStatusCodes.INTERNAL_SERVER_ERROR,
       ErrorCodes.DATABASE_ERROR,
-      { error: error.message }
+      { error: error.message },
+      { category: ErrorCategories.SERVER_ERROR.DATABASE }
     );
   }
 };
@@ -135,18 +139,20 @@ export const fetchBooksFromGoogleAPI = async (config) => {
     return response.data;
   } catch (error) {
     if (axios.isAxiosError(error)) {
-      throw new HttpError(
+      throw createCustomError(
         'Google Books API Error',
         error.response?.status || HttpStatusCodes.INTERNAL_SERVER_ERROR,
         ErrorCodes.API_REQUEST_FAILED,
-        { message: error.message }
+        { message: error.message },
+        { category: ErrorCategories.SERVER_ERROR.EXTERNAL_API }
       );
     }
-    throw new HttpError(
+    throw createCustomError(
       'Unknown error occurred while fetching books from Google API',
       HttpStatusCodes.INTERNAL_SERVER_ERROR,
       ErrorCodes.UNEXPECTED_ERROR,
-      { error: error.message }
+      { error: error.message },
+      { category: ErrorCategories.SERVER_ERROR.UNKNOWN }
     );
   }
 };
@@ -164,11 +170,12 @@ export const processApiResponse = (data) => {
 // Mapping Helpers
 export const mapBookItem = (item) => {
   if (!item || !item.volumeInfo) {
-    throw new HttpError(
+    throw createCustomError(
       'Invalid book item',
       HttpStatusCodes.INTERNAL_SERVER_ERROR,
       ErrorCodes.INVALID_INPUT,
-      { title: item.volumeInfo.title }
+      { title: item.volumeInfo?.title },
+      { category: ErrorCategories.SERVER_ERROR.INTERNAL }
     );
   }
 

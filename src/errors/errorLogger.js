@@ -1,11 +1,11 @@
-import { loggingConfig } from '../config/cloudLoggingConfig.js';
+import { logEntry, loggingConfig } from '../config/cloudLoggingConfig.js';
 import { ErrorCategories, getErrorCategory } from './errorConstraints.js';
 
 const errorLogs = new Map();
 const ERROR_LOG_LIMIT = 10;
 const ERROR_LOG_WINDOW = 60000; // 1 minute
 
-const shouldLogError = (errorKey) => {
+export const shouldLogError = (errorKey) => {
   const now = Date.now();
   const errorLog = errorLogs.get(errorKey) || { count: 0, firstLog: now };
 
@@ -59,14 +59,13 @@ export const logError = (error, req) => {
       return; // Skip non-error logs in error-only mode
     }
 
-    const logEntry = {
+    const logMessage = {
       severity,
       message: error.message,
       statusCode: error.statusCode,
       category,
       errorCode: error.errorCode,
       requestId: req.id,
-      stack: error.stack || null,
       url: req.originalUrl,
       method: req.method,
       ip: req.ip,
@@ -75,43 +74,49 @@ export const logError = (error, req) => {
       environment: process.env.NODE_ENV,
     };
 
-    // Add category-specific details
+    // Always include original error if it exists, and filter its stack as well
+    if (error.originalError && error.originalError.stack) {
+      logMessage.originalError = {
+        message: error.originalError.message,
+        stack: error.originalError.stack,
+      };
+    }
+
+    // Add additional details based on error category (as in previous examples)
     switch (category) {
       case ErrorCategories.SERVER_ERROR.DATABASE:
-        logEntry.databaseDetails = {
+        logMessage.databaseDetails = {
           operation: error.operation,
           collection: error.collection,
         };
         break;
       case ErrorCategories.SERVER_ERROR.EXTERNAL_API:
-        logEntry.apiDetails = {
+        logMessage.apiDetails = {
           apiName: error.apiName,
           endpoint: error.endpoint,
         };
         break;
       case ErrorCategories.CLIENT_ERROR.VALIDATION:
-        logEntry.validationErrors = error.details;
+        logMessage.validationErrors = error.details;
         break;
       case ErrorCategories.CLIENT_ERROR.RATE_LIMIT:
-        logEntry.rateLimitDetails = {
+        logMessage.rateLimitDetails = {
           limit: error.limit,
           current: error.current,
         };
         break;
     }
 
-    // Add request body for debug purposes (be cautious with sensitive data)
+    // Log request body only in non-production environments
     if (process.env.NODE_ENV !== 'production') {
-      logEntry.requestBody = req.body;
+      logMessage.requestBody = req.body;
     }
 
-    logEntry(logEntry).catch(console.error);
-    
+    // Log the error
+    logEntry(logMessage).catch(console.error);
 
-    // Additional actions based on severity
     if (severity === 'CRITICAL') {
-      // TODO: Implement alerting mechanism (e.g., send SMS, trigger PagerDuty)
-      console.error('CRITICAL ERROR:', error);
+      console.error('CRITICAL ERROR:', logMessage);
     }
   }
 };

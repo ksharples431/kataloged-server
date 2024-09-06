@@ -1,4 +1,9 @@
-import HttpError from '../../errors/httpErrorModel.js';
+import { createCustomError } from '../../errors/customError.js';
+import {
+  ErrorCodes,
+  HttpStatusCodes,
+  ErrorCategories,
+} from '../../errors/errorConstraints.js';
 import { adminAuth } from '../../config/firebaseConfig.js';
 import { tokenCache } from '../../middleware/tokenMiddleware.js';
 import { validateInput } from './helpers/validationHelpers.js';
@@ -8,110 +13,122 @@ import {
   handleUserCreationOrFetch,
 } from './helpers/utilityHelpers.js';
 
-//todo: fix returned data, use a helper function
-export const googleSignIn = async (req, res, next) => {
-  try {
-    validateInput(req.body, googleSignInSchema);
+export const googleSignIn = async (req, res) => {
+  validateInput(req.body, googleSignInSchema);
 
-    const { email } = req.body;
-    const { uid, username } = req.user;
+  const { email } = req.body;
+  const { uid, username } = req.user;
 
-    if (!uid) {
-      throw new HttpError(
-        'No user id provided, authentication failed',
-        401
-      );
-    }
-
-    const userData = {
-      username: username || email.split('@')[0],
-      email,
-    };
-
-    const user = await handleUserCreationOrFetch(uid, userData);
-
-    res.status(200).json({
-      message: 'User signed in successfully',
-      user,
-    });
-  } catch (error) {
-    next(error);
+  if (!uid) {
+    throw createCustomError(
+      'No user id provided, authentication failed',
+      HttpStatusCodes.UNAUTHORIZED,
+      ErrorCodes.INVALID_CREDENTIALS,
+      null,
+      { category: ErrorCategories.CLIENT_ERROR.AUTHENTICATION }
+    );
   }
+
+  const userData = {
+    username: username || email.split('@')[0],
+    email,
+  };
+
+  const user = await handleUserCreationOrFetch(uid, userData);
+
+  res.status(200).json({
+    message: 'User signed in successfully',
+    user,
+  });
 };
 
-export const signup = async (req, res, next) => {
+export const signup = async (req, res) => {
+  validateInput(req.body, signupSchema);
+
+  const { username, email } = req.body;
+  const { uid } = req.user;
+
+  if (!uid) {
+    throw createCustomError(
+      'No user id provided, authentication failed',
+      HttpStatusCodes.UNAUTHORIZED,
+      ErrorCodes.INVALID_CREDENTIALS,
+      null,
+      { category: ErrorCategories.CLIENT_ERROR.AUTHENTICATION }
+    );
+  }
+
+  let user;
   try {
-    validateInput(req.body, signupSchema);
-
-    const { username, email } = req.body;
-    const { uid } = req.user;
-
-    if (!uid) {
-      throw new HttpError(
-        'No user id provided, authentication failed',
-        401
+    user = await handleUserCreationOrFetch(uid, { username, email });
+  } catch (error) {
+    if (error.statusCode === HttpStatusCodes.NOT_FOUND) {
+      throw createCustomError(
+        'User with this UID already exists',
+        HttpStatusCodes.CONFLICT,
+        ErrorCodes.RESOURCE_ALREADY_EXISTS,
+        { userId: uid },
+        { category: ErrorCategories.CLIENT_ERROR.CONFLICT }
       );
     }
-
-    const user = await handleUserCreationOrFetch(uid, { username, email });
-
-    res.status(201).json({
-      message: 'User created successfully',
-      user,
-    });
-  } catch (error) {
-    if (error instanceof HttpError && error.statusCode !== 404) {
-      return next(new HttpError('User with this UID already exists', 409));
-    }
-    next(error);
+    throw error;
   }
+
+  res.status(201).json({
+    message: 'User created successfully',
+    user,
+  });
 };
 
-export const login = async (req, res, next) => {
-  try {
-    const { uid } = req.user;
+export const login = async (req, res) => {
+  const { uid } = req.user;
 
-    if (!uid) {
-      throw new HttpError(
-        'No user id provided, authentication failed',
-        401
-      );
-    }
-
-    const user = await fetchUserById(uid);
-
-    res.status(200).json({
-      message: 'User logged in successfully',
-      user,
-    });
-  } catch (error) {
-    next(error);
+  if (!uid) {
+    throw createCustomError(
+      'No user id provided, authentication failed',
+      HttpStatusCodes.UNAUTHORIZED,
+      ErrorCodes.INVALID_CREDENTIALS,
+      null,
+      { category: ErrorCategories.CLIENT_ERROR.AUTHENTICATION }
+    );
   }
+
+  const user = await fetchUserById(uid);
+
+  res.status(200).json({
+    message: 'User logged in successfully',
+    user,
+  });
 };
 
-export const logout = async (req, res, next) => {
-  try {
-    const idToken = req.headers.authorization?.split('Bearer ')[1];
+export const logout = async (req, res) => {
+  const idToken = req.headers.authorization?.split('Bearer ')[1];
 
-    if (!idToken) {
-      throw new HttpError('Invalid authorization header format', 401);
-    }
-
-    tokenCache.del(idToken);
-
-    const { uid } = req.user;
-
-    if (!uid) {
-      throw new HttpError(
-        'No user id provided, authentication failed',
-        401
-      );
-    }
-
-    await adminAuth.revokeRefreshTokens(uid);
-
-    res.status(200).json({ message: 'User logged out successfully' });
-  } catch (error) {
-    next(error);
+  if (!idToken) {
+    throw createCustomError(
+      'Invalid authorization header format',
+      HttpStatusCodes.UNAUTHORIZED,
+      ErrorCodes.INVALID_CREDENTIALS,
+      null,
+      { category: ErrorCategories.CLIENT_ERROR.AUTHENTICATION }
+    );
   }
+
+  tokenCache.del(idToken);
+
+  const { uid } = req.user;
+
+  if (!uid) {
+    throw createCustomError(
+      'No user id provided, authentication failed',
+      HttpStatusCodes.UNAUTHORIZED,
+      ErrorCodes.INVALID_CREDENTIALS,
+      null,
+      { category: ErrorCategories.CLIENT_ERROR.AUTHENTICATION }
+    );
+  }
+
+  await adminAuth.revokeRefreshTokens(uid);
+
+  res.status(200).json({ message: 'User logged out successfully' });
 };

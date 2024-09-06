@@ -1,128 +1,84 @@
-import HttpError from './httpErrorModel.js';
-import {
-  handleJoiValidationError,
-  handleFirestoreValidationError,
-} from './validationErrorHandlers.js';
-import axios from 'axios';
-import {
-  mapGrpcErrorToHttpError,
-  mapAxiosErrorToHttpError,
-  mapFirebaseErrorToHttpError,
-  mapOtherErrors,
-  createHttpError,
-} from './errorMapper.js';
-import {
-  HttpStatusCodes,
-  ErrorCodes,
-  getErrorCategory,
-} from './errorConstraints.js';
-import { logEntry, loggingConfig } from '../config/cloudLoggingConfig.js';
-import { getSeverity } from './errorLogger.js';
+import { wrapError, logError } from './errorUtils.js';
+import { mapErrorToCustomError } from './errorMapper.js';
+import { logEntry } from '../config/cloudLoggingConfig.js';
 
-export const handleError = (err, req, res, next) => {
-  console.error('Original error:', err);
+export const globalErrorHandler = async (err, req, res, next) => {
+  try {
+    console.error('Original error:', sanitizeError(err));
 
-  let error = err;
+    // Map the error to a custom error
+    let error = mapErrorToCustomError(err, req);
 
-  if (err.isJoi) {
-    error = handleJoiValidationError(err);
-  } else if (
-    err.name === 'FirebaseAuthError' ||
-    (typeof err.code === 'string' &&
-      (err.code.startsWith('auth/') ||
-        err.code.startsWith('database/') ||
-        err.code.startsWith('storage/')))
-  ) {
-    error = mapFirebaseErrorToHttpError(err);
-  } else if (err.code && typeof err.code === 'number') {
-    error = mapGrpcErrorToHttpError(err);
-  } else if (err.name === 'ValidationError') {
-    error = handleFirestoreValidationError(err);
-  } else if (axios.isAxiosError(err)) {
-    const apiName = err.config?.url?.includes('googleapis.com/books')
-      ? 'Google Books API'
-      : 'External API';
-    error = mapAxiosErrorToHttpError(err, apiName);
-  } else if (!(error instanceof HttpError)) {
-    error = mapOtherErrors(err);
-  }
+    // Wrap the error to ensure consistent structure
+    error = wrapError(error, { requestId: req.id });
 
-  const isProduction = process.env.NODE_ENV === 'production';
+    // Log the error
+    await logError(error, req);
 
-  const response = {
-    message: error.message || 'An unexpected error occurred',
-    statusCode: error.statusCode || HttpStatusCodes.INTERNAL_SERVER_ERROR,
-    errorCode: error.errorCode || ErrorCodes.UNEXPECTED_ERROR,
-    category: error.category || getErrorCategory(error.statusCode),
-    requestId: req.id,
-  };
+    // Prepare the error response object
+    const response = {
+      message: error.message || 'An unexpected error occurred',
+      statusCode: error.statusCode || 500,
+      errorCode: error.errorCode || 'UNEXPECTED_ERROR',
+      category: error.category || 'ServerError.Unknown',
+      requestId: error.requestId || req.id,
+    };
 
-  if (!isProduction) {
-    response.stack = error.stack;
-    response.details = error.details;
-  }
+    // Add stack and details to the response in non-production environments
+    if (process.env.NODE_ENV !== 'production') {
+      response.stack = error.stack;
+      if (error.details) {
+        response.details = sanitizeErrorDetails(error.details);
+      }
+    }
 
-  const severity = getSeverity(response.category);
+    // Send error response
+    res.status(response.statusCode).json(response);
+  } catch (handlerError) {
+    console.error('Error in error handler:', handlerError);
 
-  if (
-    !loggingConfig.errorOnly ||
-    loggingConfig.logLevels.includes(severity)
-  ) {
-    logEntry({
-      severity,
-      message: `Error: ${response.message}`,
-      errorCode: response.errorCode,
-      stack: !isProduction ? error.stack : undefined,
+    // Log the error in the error handler
+    await logEntry({
+      severity: 'ERROR',
+      message: 'Error in error handler',
+      error: handlerError,
+      originalError: sanitizeError(err),
       requestId: req.id,
-      userId: req.user?.uid || 'unauthenticated',
-      category: response.category,
-      statusCode: response.statusCode,
     }).catch(console.error);
+
+    // Send a generic error response if headers haven't been sent yet
+    if (!res.headersSent) {
+      res.status(500).json({ message: 'An unexpected error occurred' });
+    }
   }
-
-  res.status(response.statusCode).json(response);
 };
 
-export const asyncRouteHandler =
-  (controller) => async (req, res, next) => {
-    try {
-      await controller(req, res, next);
-    } catch (error) {
-      console.error('Async Route Error:', error);
-      if (res.headersSent) {
-        return next(error);
-      }
-      next(error);
-    }
-  };
+function sanitizeError(error) {
+  if (error instanceof Error) {
+    return {
+      name: error.name,
+      message: error.message,
+      stack: error.stack,
+      // Include other non-circular properties as needed
+      ...(error.statusCode && { statusCode: error.statusCode }),
+      ...(error.errorCode && { errorCode: error.errorCode }),
+      ...(error.category && { category: error.category }),
+      ...(error.requestId && { requestId: error.requestId }),
+    };
+  }
+  return error;
+}
 
-export const asyncErrorHandler =
-  (errorHandler) => async (err, req, res, next) => {
-    try {
-      await errorHandler(err, req, res, next);
-    } catch (error) {
-      console.error('Error in error handler:', error);
-      if (!res.headersSent) {
-        res.status(500).json({ message: 'An unexpected error occurred' });
-      }
-    }
-  };
-
-export const createErrorResponse = (
-  message,
-  statusCode,
-  errorCode,
-  details
-) => {
-  return { message, statusCode, errorCode, details };
-};
-
-export const notFound = (req, res, next) => {
-  next(
-    createHttpError(
-      `Not Found - ${req.originalUrl}`,
-      HttpStatusCodes.NOT_FOUND,
-      ErrorCodes.RESOURCE_NOT_FOUND
-    )
-  );
-};
+function sanitizeErrorDetails(details) {
+  if (details && typeof details === 'object') {
+    return JSON.parse(
+      JSON.stringify(details, (key, value) => {
+        if (key === 'originalError') {
+          return sanitizeError(value);
+        }
+        return value;
+      })
+    );
+  }
+  return details;
+}

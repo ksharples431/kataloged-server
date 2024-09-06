@@ -1,8 +1,8 @@
-import HttpError from '../../errors/httpErrorModel.js';
-
+import { createCustomError } from '../../errors/customError.js';
 import {
   ErrorCodes,
   HttpStatusCodes,
+  ErrorCategories,
 } from '../../errors/errorConstraints.js';
 import {
   createUserBookSchema,
@@ -23,24 +23,22 @@ import {
   deleteUserBookHelper,
 } from './userBookService.js';
 
-
 export const getUserBookById = async (req, res) => {
   const { ubid } = req.params;
-
 
   let userBook = await fetchUserBookById(ubid);
 
   if (!userBook) {
-    throw new HttpError(
+    throw createCustomError(
       'User book not found',
       HttpStatusCodes.NOT_FOUND,
-      ErrorCodes.RESOURCE_NOT_FOUND
+      ErrorCodes.RESOURCE_NOT_FOUND,
+      { userBookId: ubid },
+      { category: ErrorCategories.CLIENT_ERROR.NOT_FOUND }
     );
   }
 
   userBook = formatUserBookDetailsResponse(userBook);
-
-
 
   res.status(200).json({
     data: {
@@ -57,7 +55,6 @@ export const getUserBooks = async (req, res) => {
   let userBooks = await fetchUserBooks(uid, sortBy, order);
   const sortedBooks = sortBooks(userBooks, sortBy, order);
   userBooks = sortedBooks.map(formatBookCoverResponse);
-
 
   res.status(200).json({
     data: {
@@ -76,7 +73,6 @@ export const createUserBook = async (req, res) => {
   let userBook = await createUserBookHelper(req.body);
   userBook = formatBookCoverResponse(userBook);
 
-
   res.status(201).json({
     data: {
       message: 'User book created successfully',
@@ -91,8 +87,18 @@ export const updateUserBook = async (req, res) => {
   const updateData = req.body;
 
   let updatedUserBook = await updateUserBookHelper(ubid, updateData);
-  updatedUserBook = formatBookCoverResponse(updatedUserBook);
 
+  if (!updatedUserBook) {
+    throw createCustomError(
+      'User book not found',
+      HttpStatusCodes.NOT_FOUND,
+      ErrorCodes.RESOURCE_NOT_FOUND,
+      { userBookId: ubid },
+      { category: ErrorCategories.CLIENT_ERROR.NOT_FOUND }
+    );
+  }
+
+  updatedUserBook = formatBookCoverResponse(updatedUserBook);
 
   res.status(200).json({
     data: {
@@ -104,10 +110,18 @@ export const updateUserBook = async (req, res) => {
 
 export const deleteUserBook = async (req, res) => {
   const { ubid } = req.params;
-  
-  await deleteUserBookHelper(ubid);
 
+  const deleted = await deleteUserBookHelper(ubid);
 
+  if (!deleted) {
+    throw createCustomError(
+      'User book not found',
+      HttpStatusCodes.NOT_FOUND,
+      ErrorCodes.RESOURCE_NOT_FOUND,
+      { userBookId: ubid },
+      { category: ErrorCategories.CLIENT_ERROR.NOT_FOUND }
+    );
+  }
 
   res.status(200).json({
     data: {

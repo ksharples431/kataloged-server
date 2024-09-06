@@ -1,4 +1,3 @@
-
 import {
   validateInput,
   formatBookCoverResponse,
@@ -17,8 +16,6 @@ export const searchBook = async (req, res) => {
   const { title, author, isbn } = req.query;
 
   let books = await searchBooksInDatabase({ title, author, isbn });
-
-
 
   res.status(200).json({
     data: {
@@ -55,8 +52,6 @@ export const generalSearch = async (req, res) => {
     const bids = allBooks.map((book) => book.bid);
     userBooks = await searchUserBooksByBids(uid, bids);
   }
-
-
 
   res.status(200).json({
     data: {

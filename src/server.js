@@ -1,41 +1,44 @@
 import http from 'http';
-import app from './index.js'; // Import your Express app
+import app from './index.js';
 import { logEntry } from './config/cloudLoggingConfig.js';
+import {
+  ErrorCategories,
+  HttpStatusCodes,
+  ErrorCodes,
+} from './errors/errorConstraints.js';
+import { wrapError } from './errors/errorUtils.js';
 
 const PORT = process.env.PORT || 8080;
 
-// Create the server
 const server = http.createServer(app);
 
 server.listen(PORT, () => {
   console.log(`Server is listening for HTTP requests on port ${PORT}`);
 });
 
-// Global error handler
 const handleGlobalError = async (error) => {
   console.error('Unhandled error:', error);
-  // Log the error to Cloud Logging
-  await logEntry({
-    message: error.message,
-    severity: 'ERROR',
-    statusCode: 500,
-    category: 'ServerError.InternalError',
-    stack: error.stack || null,
+
+  const wrappedError = wrapError(error, {
+    statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
+    errorCode: ErrorCodes.UNEXPECTED_ERROR,
+    category: ErrorCategories.SERVER_ERROR.INTERNAL,
   });
 
-  // Gracefully shut down the server
+  await logEntry({
+    message: wrappedError.message,
+    severity: 'CRITICAL',
+    statusCode: wrappedError.statusCode,
+    category: wrappedError.category,
+    errorCode: wrappedError.errorCode,
+    stack: wrappedError.stack,
+  });
+
   server.close(() => {
     console.log('Server closed due to an unhandled error.');
     process.exit(1);
   });
 };
 
-// Handle uncaught exceptions
-process.on('uncaughtException', (error) => {
-  handleGlobalError(error);
-});
-
-// Handle unhandled promise rejections
-process.on('unhandledRejection', (reason, promise) => {
-  handleGlobalError(reason);
-});
+process.on('uncaughtException', handleGlobalError);
+process.on('unhandledRejection', (reason) => handleGlobalError(reason));

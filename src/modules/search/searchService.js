@@ -1,8 +1,8 @@
-import HttpError from '../../errors/httpErrorModel.js';
-
+import { createCustomError } from '../../errors/customError.js';
 import {
   ErrorCodes,
   HttpStatusCodes,
+  ErrorCategories,
 } from '../../errors/errorConstraints.js';
 import {
   buildQuery,
@@ -19,16 +19,15 @@ export async function searchBooksInDatabase(searchParams) {
     const query = buildQuery(searchParams);
     const results = await executeQuery(query);
 
- 
-
     return results;
   } catch (error) {
-    if (error instanceof HttpError) throw error;
-    throw new HttpError(
+    if (error.name === 'CustomError') throw error;
+    throw createCustomError(
       'Error searching books in database',
       HttpStatusCodes.INTERNAL_SERVER_ERROR,
       ErrorCodes.DATABASE_ERROR,
-      { searchParams, error: error.message }
+      { searchParams, error: error.message },
+      { category: ErrorCategories.SERVER_ERROR.DATABASE }
     );
   }
 }
@@ -42,16 +41,15 @@ export const searchBooksInGoogleAPI = async (
     const data = await fetchBooksFromGoogleAPI(config);
     const results = processApiResponse(data);
 
-
-
     return results;
   } catch (error) {
-    if (error instanceof HttpError) throw error;
-    throw new HttpError(
+    if (error.name === 'CustomError') throw error;
+    throw createCustomError(
       'Error searching books in Google API',
       HttpStatusCodes.INTERNAL_SERVER_ERROR,
       ErrorCodes.API_REQUEST_FAILED,
-      { googleQuery, maxResults, error: error.message }
+      { googleQuery, maxResults, error: error.message },
+      { category: ErrorCategories.SERVER_ERROR.EXTERNAL_API }
     );
   }
 };
@@ -61,16 +59,15 @@ export async function searchDatabaseGeneral(query) {
     const searchQuery = buildGeneralSearchQuery(query);
     const results = await executeQuery(searchQuery);
 
-
-
     return results;
   } catch (error) {
-    if (error instanceof HttpError) throw error;
-    throw new HttpError(
+    if (error.name === 'CustomError') throw error;
+    throw createCustomError(
       'Error performing general search in database',
       HttpStatusCodes.INTERNAL_SERVER_ERROR,
       ErrorCodes.DATABASE_ERROR,
-      { query, error: error.message }
+      { query, error: error.message },
+      { category: ErrorCategories.SERVER_ERROR.DATABASE }
     );
   }
 }
@@ -84,11 +81,12 @@ export async function searchUserBooksByBids(uid, bids) {
 
     return matchedUserBooks;
   } catch (error) {
-    throw new HttpError(
+    throw createCustomError(
       'Error searching user books by BIDs',
       HttpStatusCodes.INTERNAL_SERVER_ERROR,
       ErrorCodes.DATABASE_ERROR,
-      { uid, bids, error: error.message }
+      { uid, bids, error: error.message },
+      { category: ErrorCategories.SERVER_ERROR.DATABASE }
     );
   }
 }

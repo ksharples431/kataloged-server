@@ -11,7 +11,14 @@ export const requestLoggingMiddleware = (req, res, next) => {
         statusCode: res.statusCode,
         duration,
         requestId: req.id,
-      });
+        category: 'ServerLog.RequestInfo',
+        timestamp: new Date().toISOString(),
+        ip: req.ip,
+        userId: req.user?.uid || 'unauthenticated',
+        url: req.originalUrl,
+        method: req.method,
+        environment: process.env.NODE_ENV,
+      }).catch(console.error);
     }
   });
   next();

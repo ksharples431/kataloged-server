@@ -1,338 +1,325 @@
-import pkg from '@grpc/grpc-js';
-import HttpError from './httpErrorModel.js';
 import {
   HttpStatusCodes,
-  ErrorCategories,
   ErrorCodes,
+  ErrorCategories,
+  grpcToHttpStatus,
+  grpcToErrorCode,
+  firebaseAuthToErrorCode,
+  firestoreToErrorCode,
+  firebaseAuthToHttpStatus,
+  firestoreToHttpStatus,
   getErrorCategory,
 } from './errorConstraints.js';
+import { createCustomError, createUnknownError } from './customError.js';
 
-const { Status } = pkg;
+////////////////////////////////////////////
+// gRPC Error Handling /////////////////////
+////////////////////////////////////////////
 
-// Utility function to create a standardized HttpError
-const createHttpError = (
-  message,
-  statusCode,
-  errorCode,
-  details = null
-) => {
+// Map gRPC errors to custom errors
+export const mapGrpcErrorToCustomError = (err, req = {}) => {
+  if (!err) return createUnknownError(err, req);
+  const statusCode =
+    grpcToHttpStatus[err.code] || HttpStatusCodes.INTERNAL_SERVER_ERROR;
+  const errorCode = grpcToErrorCode[err.code] || ErrorCodes.GRPC_ERROR;
   const category = getErrorCategory(statusCode);
-  return new HttpError(message, statusCode, errorCode, details, category);
-};
 
-// Map gRPC errors to HttpErrors
-export const mapGrpcErrorToHttpError = (err) => {
-  const errorMap = {
-    [Status.NOT_FOUND]: createHttpError(
-      'Resource not found',
-      HttpStatusCodes.NOT_FOUND,
-      ErrorCodes.RESOURCE_NOT_FOUND
-    ),
-    [Status.INVALID_ARGUMENT]: createHttpError(
-      'Invalid request',
-      HttpStatusCodes.BAD_REQUEST,
-      ErrorCodes.INVALID_INPUT
-    ),
-    [Status.UNAUTHENTICATED]: createHttpError(
-      'Unauthenticated',
-      HttpStatusCodes.UNAUTHORIZED,
-      ErrorCodes.INVALID_CREDENTIALS
-    ),
-    [Status.PERMISSION_DENIED]: createHttpError(
-      'Permission denied',
-      HttpStatusCodes.FORBIDDEN,
-      ErrorCodes.PERMISSION_DENIED
-    ),
-    [Status.ALREADY_EXISTS]: createHttpError(
-      'Resource already exists',
-      HttpStatusCodes.CONFLICT,
-      ErrorCodes.RESOURCE_ALREADY_EXISTS
-    ),
-  };
-
-  return (
-    errorMap[err.code] ||
-    createHttpError(
-      err.message || 'Internal Server Error',
-      HttpStatusCodes.INTERNAL_SERVER_ERROR,
-      ErrorCodes.GRPC_ERROR
-    )
+  return createCustomError(
+    err?.message || 'gRPC Error',
+    statusCode,
+    errorCode,
+    { originalError: err, requestId: req.id },
+    { stack: err?.stack, category }
   );
 };
 
-// Map Axios errors to HttpErrors
-export const mapAxiosErrorToHttpError = (err, apiName = 'API') => {
-  if (err.response) {
+////////////////////////////////////////////
+// Axios Error Handling ////////////////////
+////////////////////////////////////////////
+
+// Map Axios errors to custom errors, including for Google Books API
+export const mapAxiosErrorToCustomError = (
+  err,
+  apiName = 'API',
+  req = {}
+) => {
+  if (!err) return createUnknownError(err, req);
+  const method = err?.config?.method;
+  const url = err?.config?.url;
+
+  if (err?.response) {
     const statusCode = err.response.status;
     const errorMessage =
       err.response.data?.error?.message ||
       err.response.data?.message ||
       err.message;
+    const errorCode = ErrorCodes.API_RESPONSE_ERROR;
+    const category = getErrorCategory(statusCode);
 
-    const commonErrorMap = {
-      [HttpStatusCodes.BAD_REQUEST]: createHttpError(
-        `Bad Request: ${errorMessage}`,
-        HttpStatusCodes.BAD_REQUEST,
-        ErrorCodes.INVALID_INPUT
-      ),
-      [HttpStatusCodes.UNAUTHORIZED]: createHttpError(
-        `Unauthorized: ${errorMessage}`,
-        HttpStatusCodes.UNAUTHORIZED,
-        ErrorCodes.INVALID_CREDENTIALS
-      ),
-      [HttpStatusCodes.FORBIDDEN]: createHttpError(
-        `Forbidden: ${errorMessage}`,
-        HttpStatusCodes.FORBIDDEN,
-        ErrorCodes.PERMISSION_DENIED
-      ),
-      [HttpStatusCodes.NOT_FOUND]: createHttpError(
-        `Not Found: ${errorMessage}`,
-        HttpStatusCodes.NOT_FOUND,
-        ErrorCodes.RESOURCE_NOT_FOUND
-      ),
-      [HttpStatusCodes.TOO_MANY_REQUESTS]: createHttpError(
-        `Too Many Requests: ${errorMessage}`,
-        HttpStatusCodes.TOO_MANY_REQUESTS,
-        ErrorCodes.RATE_LIMIT_EXCEEDED
-      ),
-      [HttpStatusCodes.INTERNAL_SERVER_ERROR]: createHttpError(
-        `Internal Server Error: ${errorMessage}`,
-        HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        ErrorCodes.API_RESPONSE_ERROR
-      ),
-    };
-
-    const googleBooksErrorMap = {
-      [HttpStatusCodes.FORBIDDEN]: createHttpError(
-        'API access forbidden. Please check API key.',
-        HttpStatusCodes.FORBIDDEN,
-        ErrorCodes.API_REQUEST_FAILED
-      ),
-      [HttpStatusCodes.TOO_MANY_REQUESTS]: createHttpError(
-        'API rate limit exceeded. Please try again later.',
-        HttpStatusCodes.TOO_MANY_REQUESTS,
-        ErrorCodes.RATE_LIMIT_EXCEEDED
-      ),
-      [HttpStatusCodes.INTERNAL_SERVER_ERROR]: createHttpError(
-        'Google Books API is currently unavailable.',
-        HttpStatusCodes.SERVICE_UNAVAILABLE,
-        ErrorCodes.SERVICE_UNAVAILABLE
-      ),
-      501: createHttpError(
-        'Google Books API is currently unavailable.',
-        HttpStatusCodes.SERVICE_UNAVAILABLE,
-        ErrorCodes.SERVICE_UNAVAILABLE
-      ),
-      502: createHttpError(
-        'Google Books API is currently unavailable.',
-        HttpStatusCodes.SERVICE_UNAVAILABLE,
-        ErrorCodes.SERVICE_UNAVAILABLE
-      ),
-      503: createHttpError(
-        'Google Books API is currently unavailable.',
-        HttpStatusCodes.SERVICE_UNAVAILABLE,
-        ErrorCodes.SERVICE_UNAVAILABLE
-      ),
-      504: createHttpError(
-        'Google Books API is currently unavailable.',
-        HttpStatusCodes.SERVICE_UNAVAILABLE,
-        ErrorCodes.SERVICE_UNAVAILABLE
-      ),
-    };
-
-    const errorMap =
-      apiName === 'Google Books API'
-        ? { ...commonErrorMap, ...googleBooksErrorMap }
-        : commonErrorMap;
-
-    return (
-      errorMap[statusCode] ||
-      createHttpError(
-        `${apiName} Error: ${errorMessage}`,
-        statusCode,
-        ErrorCodes.API_RESPONSE_ERROR
-      )
+    return createCustomError(
+      `${apiName} Error: ${errorMessage} (Request: ${method?.toUpperCase()} ${url})`,
+      statusCode,
+      errorCode,
+      {
+        originalError: err,
+        apiName,
+        responseData: err.response.data,
+        requestId: req.id,
+      },
+      { stack: err?.stack, category }
     );
-  } else if (err.request) {
-    return createHttpError(
-      `No response received from ${apiName}`,
+  } else if (err?.request) {
+    return createCustomError(
+      `No response received from ${apiName} (Request: ${method?.toUpperCase()} ${url})`,
       HttpStatusCodes.SERVICE_UNAVAILABLE,
-      ErrorCodes.API_TIMEOUT
+      ErrorCodes.API_TIMEOUT,
+      { originalError: err, apiName, requestId: req.id },
+      {
+        stack: err?.stack,
+        category: ErrorCategories.SERVER_ERROR.EXTERNAL_API,
+      }
     );
   } else {
-    return createHttpError(
-      `Error setting up the request to ${apiName}: ${err.message}`,
+    return createCustomError(
+      `Error setting up the request to ${apiName}: ${err?.message}`,
       HttpStatusCodes.INTERNAL_SERVER_ERROR,
-      ErrorCodes.API_REQUEST_FAILED
+      ErrorCodes.API_REQUEST_FAILED,
+      { originalError: err, apiName, requestId: req.id },
+      {
+        stack: err?.stack,
+        category: ErrorCategories.SERVER_ERROR.EXTERNAL_API,
+      }
     );
   }
 };
 
-// Map Firebase errors to HttpErrors
-export const mapFirebaseErrorToHttpError = (err) => {
-  // If the error is already a HttpError, return it
-  if (err instanceof HttpError) {
-    return err;
-  }
+////////////////////////////////////////////
+// Firebase Error Handling /////////////////
+////////////////////////////////////////////
 
-  // Use the original error if it exists
-  const error = err.originalError || err;
+// Map Firebase Auth errors to custom errors
+export const mapFirebaseAuthErrorToCustomError = (err, req = {}) => {
+  if (!err) return createUnknownError(err, req);
+  const errorCode =
+    firebaseAuthToErrorCode[err.code] || ErrorCodes.FIREBASE_AUTH_ERROR;
+  const statusCode =
+    firebaseAuthToHttpStatus[err.code] || HttpStatusCodes.UNAUTHORIZED;
+  const category = ErrorCategories.CLIENT_ERROR.AUTHENTICATION;
 
-  const errorMap = {
-    'auth/id-token-expired': createHttpError(
-      'Token has expired',
-      HttpStatusCodes.UNAUTHORIZED,
-      ErrorCodes.TOKEN_EXPIRED
-    ),
-    'auth/id-token-revoked': createHttpError(
-      'Token has been revoked',
-      HttpStatusCodes.UNAUTHORIZED,
-      ErrorCodes.TOKEN_INVALID
-    ),
-    'auth/invalid-id-token': createHttpError(
-      'Invalid token',
-      HttpStatusCodes.UNAUTHORIZED,
-      ErrorCodes.TOKEN_INVALID
-    ),
-    'auth/user-disabled': createHttpError(
-      'User account has been disabled',
-      HttpStatusCodes.FORBIDDEN,
-      ErrorCodes.USER_NOT_FOUND
-    ),
-    'auth/user-not-found': createHttpError(
-      'User not found',
-      HttpStatusCodes.NOT_FOUND,
-      ErrorCodes.USER_NOT_FOUND
-    ),
-    'auth/invalid-email': createHttpError(
-      'Invalid email address',
-      HttpStatusCodes.BAD_REQUEST,
-      ErrorCodes.INVALID_INPUT
-    ),
-    'auth/email-already-in-use': createHttpError(
-      'Email is already in use',
-      HttpStatusCodes.CONFLICT,
-      ErrorCodes.RESOURCE_ALREADY_EXISTS
-    ),
-    'auth/weak-password': createHttpError(
-      'Password is too weak',
-      HttpStatusCodes.BAD_REQUEST,
-      ErrorCodes.INVALID_INPUT
-    ),
-    'auth/wrong-password': createHttpError(
-      'Incorrect password',
-      HttpStatusCodes.UNAUTHORIZED,
-      ErrorCodes.INVALID_CREDENTIALS
-    ),
-    'auth/too-many-requests': createHttpError(
-      'Too many requests, please try again later',
-      HttpStatusCodes.TOO_MANY_REQUESTS,
-      ErrorCodes.RATE_LIMIT_EXCEEDED
-    ),
-    'permission-denied': createHttpError(
-      'Permission denied to access Firestore',
-      HttpStatusCodes.FORBIDDEN,
-      ErrorCodes.PERMISSION_DENIED
-    ),
-    unavailable: createHttpError(
-      'Firestore is currently unavailable',
-      HttpStatusCodes.SERVICE_UNAVAILABLE,
-      ErrorCodes.SERVICE_UNAVAILABLE
-    ),
-    'data-loss': createHttpError(
-      'Unrecoverable data loss or corruption',
-      HttpStatusCodes.INTERNAL_SERVER_ERROR,
-      ErrorCodes.DATABASE_ERROR
-    ),
-    'deadline-exceeded': createHttpError(
-      'Deadline exceeded for Firestore operation',
-      HttpStatusCodes.GATEWAY_TIMEOUT,
-      ErrorCodes.API_TIMEOUT
-    ),
-    'database/permission-denied': createHttpError(
-      'Permission denied to access Realtime Database',
-      HttpStatusCodes.FORBIDDEN,
-      ErrorCodes.PERMISSION_DENIED
-    ),
-    'database/unavailable': createHttpError(
-      'Realtime Database is currently unavailable',
-      HttpStatusCodes.SERVICE_UNAVAILABLE,
-      ErrorCodes.SERVICE_UNAVAILABLE
-    ),
-    'storage/object-not-found': createHttpError(
-      'Requested file does not exist',
-      HttpStatusCodes.NOT_FOUND,
-      ErrorCodes.RESOURCE_NOT_FOUND
-    ),
-    'storage/unauthorized': createHttpError(
-      'User is not authorized to perform the desired action',
-      HttpStatusCodes.FORBIDDEN,
-      ErrorCodes.PERMISSION_DENIED
-    ),
-    'storage/canceled': createHttpError(
-      'User canceled the upload',
-      HttpStatusCodes.BAD_REQUEST,
-      ErrorCodes.API_REQUEST_FAILED
-    ),
-    'storage/unknown': createHttpError(
-      'Unknown error occurred, inspect the server response',
-      HttpStatusCodes.INTERNAL_SERVER_ERROR,
-      ErrorCodes.UNEXPECTED_ERROR
-    ),
-  };
-
-  return (
-    errorMap[error.code] ||
-    createHttpError(
-      error.message || 'Firebase Authentication error',
-      error.statusCode || HttpStatusCodes.INTERNAL_SERVER_ERROR,
-      ErrorCodes.FIREBASE_AUTH_ERROR,
-      null,
-      null,
-      error.stack
-    )
+  return createCustomError(
+    err?.message || 'Firebase Authentication Error',
+    statusCode,
+    errorCode,
+    { originalError: err, requestId: req.id },
+    { stack: err?.stack, category }
   );
 };
 
-// Map other types of errors
-export const mapOtherErrors = (err) => {
-  if (err instanceof TypeError) {
-    return createHttpError(
-      `Type Error: ${err.message}`,
-      HttpStatusCodes.INTERNAL_SERVER_ERROR,
-      ErrorCodes.INTERNAL_SERVER_ERROR
+// Map Firebase Firestore errors to custom errors
+export const mapFirestoreErrorToCustomError = (err, req = {}) => {
+  if (!err) return createUnknownError(err, req);
+
+  // Check for permission denied error first
+  if (err.code === 'permission-denied') {
+    return createCustomError(
+      'Permission denied to access Firestore',
+      HttpStatusCodes.FORBIDDEN,
+      ErrorCodes.PERMISSION_DENIED,
+      { originalError: err, requestId: req.id },
+      {
+        stack: err.stack,
+        category: ErrorCategories.CLIENT_ERROR.AUTHORIZATION,
+      }
     );
-  } else if (err instanceof ReferenceError) {
-    return createHttpError(
-      `Reference Error: ${err.message}`,
-      HttpStatusCodes.INTERNAL_SERVER_ERROR,
-      ErrorCodes.INTERNAL_SERVER_ERROR
-    );
-  } else if (err instanceof SyntaxError) {
-    return createHttpError(
-      `Syntax Error: ${err.message}`,
+  }
+
+  // Handle validation errors
+  if (
+    err.code === 'failed-precondition' ||
+    err.code === 'invalid-argument'
+  ) {
+    return createCustomError(
+      err.message || 'Firestore Validation Error',
       HttpStatusCodes.BAD_REQUEST,
-      ErrorCodes.INVALID_INPUT
+      ErrorCodes.INVALID_INPUT,
+      { originalError: err, requestId: req.id },
+      {
+        stack: err.stack,
+        category: ErrorCategories.CLIENT_ERROR.VALIDATION,
+      }
     );
-  } else if (err instanceof URIError) {
-    return createHttpError(
-      `URI Error: ${err.message}`,
-      HttpStatusCodes.BAD_REQUEST,
-      ErrorCodes.INVALID_INPUT
-    );
-  } else if (err.name === 'MongoError') {
-    return createHttpError(
-      `Database Error: ${err.message}`,
-      HttpStatusCodes.INTERNAL_SERVER_ERROR,
-      ErrorCodes.DATABASE_ERROR
-    );
+  }
+
+  // Handle other Firestore errors
+  const errorCode =
+    firestoreToErrorCode[err.code] || ErrorCodes.FIREBASE_DATABASE_ERROR;
+  const statusCode =
+    firestoreToHttpStatus[err.code] ||
+    HttpStatusCodes.INTERNAL_SERVER_ERROR;
+  const category = getErrorCategory(statusCode);
+
+  return createCustomError(
+    err.message || 'Firestore Error',
+    statusCode,
+    errorCode,
+    { originalError: err, requestId: req.id },
+    { stack: err.stack, category }
+  );
+};
+
+// Map general Firebase errors to custom errors
+export const mapFirebaseErrorToCustomError = (err, req = {}) => {
+  if (!err) return createUnknownError(err, req);
+
+  if (err.name === 'FirebaseAuthError') {
+    return mapFirebaseAuthErrorToCustomError(err, req);
+  } else if (
+    err.name === 'FirebaseError' &&
+    err.code?.startsWith('firestore/')
+  ) {
+    return mapFirestoreErrorToCustomError(err, req);
   } else {
-    return createHttpError(
-      err.message || 'An unknown error occurred',
+    return createCustomError(
+      err?.message || 'Firebase Error',
       HttpStatusCodes.INTERNAL_SERVER_ERROR,
-      ErrorCodes.UNEXPECTED_ERROR
+      ErrorCodes.FIREBASE_DATABASE_ERROR,
+      { originalError: err, requestId: req.id },
+      {
+        stack: err?.stack,
+        category: ErrorCategories.SERVER_ERROR.DATABASE,
+      }
     );
   }
 };
 
-export { createHttpError };
+////////////////////////////////////////////
+// General Error Handling //////////////////
+////////////////////////////////////////////
+
+// Main error mapping function
+export const mapErrorToCustomError = (err, req = {}) => {
+  if (!err) return createUnknownError(err, req);
+
+  if (err.isJoi) {
+    return mapValidationErrorToCustomError(err, req);
+  }
+
+  switch (err.name) {
+    case 'ValidationError':
+      return mapValidationErrorToCustomError(err, req);
+    case 'FirebaseAuthError':
+    case 'FirebaseError':
+      return mapFirebaseErrorToCustomError(err, req);
+    case 'AxiosError':
+      const apiName = err.config?.url?.includes('googleapis.com/books')
+        ? 'Google Books API'
+        : 'External API';
+      return mapAxiosErrorToCustomError(err, apiName, req);
+    default:
+      if (err.code && typeof err.code === 'number') {
+        return mapGrpcErrorToCustomError(err, req);
+      }
+      return createUnknownError(err, req);
+  }
+};
+
+////////////////////////////////////////////
+// Utility Functions ///////////////////////
+////////////////////////////////////////////
+
+export const mapErrorToCategory = (err) => {
+  if (!err) return ErrorCategories.SERVER_ERROR.UNKNOWN;
+
+  if (err.category) return err.category;
+
+  if (err.isJoi || err.name === 'ValidationError') {
+    return ErrorCategories.CLIENT_ERROR.VALIDATION;
+  }
+
+  if (err.name === 'FirebaseAuthError') {
+    return ErrorCategories.CLIENT_ERROR.AUTHENTICATION;
+  }
+
+  if (err.name === 'FirebaseError' && err.code?.startsWith('firestore/')) {
+    return ErrorCategories.SERVER_ERROR.DATABASE;
+  }
+
+  if (err.name === 'AxiosError') {
+    return ErrorCategories.SERVER_ERROR.EXTERNAL_API;
+  }
+
+  if (err.code && typeof err.code === 'number') {
+    return getErrorCategory(
+      grpcToHttpStatus[err.code] || HttpStatusCodes.INTERNAL_SERVER_ERROR
+    );
+  }
+
+  return ErrorCategories.SERVER_ERROR.UNKNOWN;
+};
+
+export const mapErrorToCode = (err) => {
+  if (!err) return ErrorCodes.UNKNOWN_ERROR;
+
+  if (err.errorCode) return err.errorCode;
+
+  if (err.isJoi || err.name === 'ValidationError') {
+    return ErrorCodes.INVALID_INPUT;
+  }
+
+  if (err.name === 'FirebaseAuthError') {
+    return (
+      firebaseAuthToErrorCode[err.code] || ErrorCodes.FIREBASE_AUTH_ERROR
+    );
+  }
+
+  if (err.name === 'FirebaseError' && err.code?.startsWith('firestore/')) {
+    return (
+      firestoreToErrorCode[err.code] || ErrorCodes.FIREBASE_DATABASE_ERROR
+    );
+  }
+
+  if (err.name === 'AxiosError') {
+    return ErrorCodes.API_RESPONSE_ERROR;
+  }
+
+  if (err.code && typeof err.code === 'number') {
+    return grpcToErrorCode[err.code] || ErrorCodes.GRPC_ERROR;
+  }
+
+  return ErrorCodes.UNKNOWN_ERROR;
+};
+
+export const mapErrorToStatusCode = (err) => {
+  if (!err) return HttpStatusCodes.INTERNAL_SERVER_ERROR;
+
+  if (err.statusCode) return err.statusCode;
+
+  if (err.isJoi || err.name === 'ValidationError') {
+    return HttpStatusCodes.BAD_REQUEST;
+  }
+
+  if (err.name === 'FirebaseAuthError') {
+    return (
+      firebaseAuthToHttpStatus[err.code] || HttpStatusCodes.UNAUTHORIZED
+    );
+  }
+
+  if (err.name === 'FirebaseError' && err.code?.startsWith('firestore/')) {
+    return (
+      firestoreToHttpStatus[err.code] ||
+      HttpStatusCodes.INTERNAL_SERVER_ERROR
+    );
+  }
+
+  if (err.name === 'AxiosError') {
+    return err.response?.status || HttpStatusCodes.BAD_GATEWAY;
+  }
+
+  if (err.code && typeof err.code === 'number') {
+    return (
+      grpcToHttpStatus[err.code] || HttpStatusCodes.INTERNAL_SERVER_ERROR
+    );
+  }
+
+  return HttpStatusCodes.INTERNAL_SERVER_ERROR;
+};

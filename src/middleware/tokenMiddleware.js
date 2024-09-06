@@ -1,6 +1,12 @@
 import NodeCache from 'node-cache';
 import { adminAuth } from '../config/firebaseConfig.js';
-import HttpError from '../errors/httpErrorModel.js';
+import { createCustomError } from '../errors/customError.js';
+import { mapFirebaseAuthErrorToCustomError } from '../errors/errorMapper.js';
+import {
+  ErrorCodes,
+  HttpStatusCodes,
+  ErrorCategories,
+} from '../errors/errorConstraints.js';
 
 // Set TTL to 1 hour (3600 seconds) and check for expired entries every 10 minutes
 export const tokenCache = new NodeCache({
@@ -13,13 +19,25 @@ const verifyToken = async (req, res, next) => {
     const authHeader = req.headers.authorization;
 
     if (!authHeader) {
-      throw new HttpError('No authorization header provided', 401);
+      throw createCustomError(
+        'No authorization header provided',
+        HttpStatusCodes.UNAUTHORIZED,
+        ErrorCodes.INVALID_CREDENTIALS,
+        { requestId: req.id },
+        { category: ErrorCategories.CLIENT_ERROR.AUTHENTICATION }
+      );
     }
 
     const idToken = authHeader.split('Bearer ')[1];
 
     if (!idToken) {
-      throw new HttpError('Invalid authorization header format', 401);
+      throw createCustomError(
+        'Invalid authorization header format',
+        HttpStatusCodes.UNAUTHORIZED,
+        ErrorCodes.INVALID_CREDENTIALS,
+        { requestId: req.id },
+        { category: ErrorCategories.CLIENT_ERROR.AUTHENTICATION }
+      );
     }
 
     const cachedUser = tokenCache.get(idToken);
@@ -34,10 +52,7 @@ const verifyToken = async (req, res, next) => {
     req.user = decodedToken;
     next();
   } catch (error) {
-    console.error('Token verification error:', error);
-    error.name = 'FirebaseAuthError';
-    error.originalError = error; 
-    next(error);
+    next(mapFirebaseAuthErrorToCustomError(error, req));
   }
 };
 

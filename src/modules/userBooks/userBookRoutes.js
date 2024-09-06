@@ -1,7 +1,7 @@
 import express from 'express';
 import verifyToken from '../../middleware/tokenMiddleware.js';
 import { validateRequest } from '../../middleware/validationMiddleware.js';
-import { asyncRouteHandler } from '../../errors/errorHandler.js';
+import { handleAsyncRoute } from '../../errors/errorUtils.js';
 import { apiLimiter } from '../../middleware/rateLimitMiddleware.js';
 import {
   createUserBookSchema,
@@ -22,28 +22,28 @@ router.use('/userBooks', apiLimiter);
 router.get(
   '/userBooks/:ubid',
   verifyToken,
-  asyncRouteHandler(getUserBookById)
+  handleAsyncRoute(getUserBookById)
 );
-router.get('/userBooks', verifyToken, asyncRouteHandler(getUserBooks));
+router.get('/userBooks', verifyToken, handleAsyncRoute(getUserBooks));
 
 router.post(
   '/userBooks',
   verifyToken,
   validateRequest(createUserBookSchema),
-  asyncRouteHandler(createUserBook)
+  handleAsyncRoute(createUserBook)
 );
 
 router.put(
   '/userBooks/:ubid',
   verifyToken,
   validateRequest(updateUserBookSchema),
-  asyncRouteHandler(updateUserBook)
+  handleAsyncRoute(updateUserBook)
 );
 
 router.delete(
   '/userBooks/:ubid',
   verifyToken,
-  asyncRouteHandler(deleteUserBook)
+  handleAsyncRoute(deleteUserBook)
 );
 
 export default router;

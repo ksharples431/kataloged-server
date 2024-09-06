@@ -1,7 +1,8 @@
-import HttpError from '../../errors/httpErrorModel.js';
+import { createCustomError } from '../../errors/customError.js';
 import {
   ErrorCodes,
   HttpStatusCodes,
+  ErrorCategories,
 } from '../../errors/errorConstraints.js';
 import {
   createBookSchema,
@@ -42,10 +43,12 @@ export const getBookById = async (req, res) => {
   let book = await fetchBookById(bid);
 
   if (!book) {
-    throw new HttpError(
+    throw createCustomError(
       'Book not found',
       HttpStatusCodes.NOT_FOUND,
-      ErrorCodes.RESOURCE_NOT_FOUND
+      ErrorCodes.RESOURCE_NOT_FOUND,
+      { bookId: bid },
+      { category: ErrorCategories.CLIENT_ERROR.NOT_FOUND }
     );
   }
 
@@ -98,6 +101,15 @@ export const updateBook = async (req, res) => {
   const updateData = req.body;
 
   let updatedBook = await updateBookHelper(bid, updateData);
+  if (!updatedBook) {
+    throw createCustomError(
+      'Book not found',
+      HttpStatusCodes.NOT_FOUND,
+      ErrorCodes.RESOURCE_NOT_FOUND,
+      { bookId: bid },
+      { category: ErrorCategories.CLIENT_ERROR.NOT_FOUND }
+    );
+  }
   updatedBook = formatBookCoverResponse(updatedBook);
 
   res.status(200).json({
@@ -111,7 +123,16 @@ export const updateBook = async (req, res) => {
 export const deleteBook = async (req, res) => {
   const { bid } = req.params;
 
-  await deleteBookHelper(bid);
+  const deleted = await deleteBookHelper(bid);
+  if (!deleted) {
+    throw createCustomError(
+      'Book not found',
+      HttpStatusCodes.NOT_FOUND,
+      ErrorCodes.RESOURCE_NOT_FOUND,
+      { bookId: bid },
+      { category: ErrorCategories.CLIENT_ERROR.NOT_FOUND }
+    );
+  }
 
   res.status(200).json({
     data: {

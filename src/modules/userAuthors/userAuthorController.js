@@ -1,4 +1,9 @@
-
+import { createCustomError } from '../../errors/customError.js';
+import {
+  ErrorCodes,
+  HttpStatusCodes,
+  ErrorCategories,
+} from '../../errors/errorConstraints.js';
 import {
   getUserAuthorsQuerySchema,
   getUserAuthorBooksQuerySchema,
@@ -19,9 +24,18 @@ export const getUserAuthors = async (req, res) => {
   const { sortBy = 'name', order = 'asc' } = req.query;
 
   let authors = await fetchAllUserAuthors(uid);
-  authors = sortBooks(authors, sortBy, order);
 
- 
+  if (authors.length === 0) {
+    throw createCustomError(
+      'No authors found for this user',
+      HttpStatusCodes.NOT_FOUND,
+      ErrorCodes.RESOURCE_NOT_FOUND,
+      { userId: uid },
+      { category: ErrorCategories.CLIENT_ERROR.NOT_FOUND }
+    );
+  }
+
+  authors = sortBooks(authors, sortBy, order);
 
   res.status(200).json({
     data: {
@@ -37,10 +51,19 @@ export const getUserAuthorBooks = async (req, res) => {
   const { sortBy = 'title', order = 'asc' } = req.query;
 
   let authorBooks = await fetchUserAuthorBooks(uid, author);
+
+  if (authorBooks.length === 0) {
+    throw createCustomError(
+      'No books found for this user and author',
+      HttpStatusCodes.NOT_FOUND,
+      ErrorCodes.RESOURCE_NOT_FOUND,
+      { userId: uid, author },
+      { category: ErrorCategories.CLIENT_ERROR.NOT_FOUND }
+    );
+  }
+
   const sortedBooks = sortBooks(authorBooks, sortBy, order);
   authorBooks = sortedBooks.map(formatBookCoverResponse);
-
-
 
   res.status(200).json({
     data: {

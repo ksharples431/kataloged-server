@@ -1,8 +1,9 @@
 import db from '../../config/firebaseConfig.js';
-import HttpError from '../../errors/httpErrorModel.js';
+import { createCustomError } from '../../errors/customError.js';
 import {
   ErrorCodes,
   HttpStatusCodes,
+  ErrorCategories,
 } from '../../errors/errorConstraints.js';
 import { generateId, executeQuery } from '../../utils/globalHelpers.js';
 
@@ -36,12 +37,12 @@ export const fetchAllAuthors = async () => {
 
     return Array.from(authorMap.values());
   } catch (error) {
-    if (error instanceof HttpError) throw error;
-    throw new HttpError(
+    throw createCustomError(
       'Failed to fetch authors',
       HttpStatusCodes.INTERNAL_SERVER_ERROR,
       ErrorCodes.DATABASE_ERROR,
-      { error: error.message }
+      { error: error.message },
+      { category: ErrorCategories.SERVER_ERROR.DATABASE }
     );
   }
 };
@@ -52,22 +53,24 @@ export const fetchAuthorBooks = async (author) => {
     const books = await executeQuery(query);
 
     if (books.length === 0) {
-      throw new HttpError(
+      throw createCustomError(
         'No books found for this author',
         HttpStatusCodes.NOT_FOUND,
         ErrorCodes.RESOURCE_NOT_FOUND,
-        { author }
+        { author },
+        { category: ErrorCategories.CLIENT_ERROR.NOT_FOUND }
       );
     }
 
     return books;
   } catch (error) {
-    if (error instanceof HttpError) throw error;
-    throw new HttpError(
+    if (error.name === 'CustomError') throw error;
+    throw createCustomError(
       'Failed to fetch books for author',
       HttpStatusCodes.INTERNAL_SERVER_ERROR,
       ErrorCodes.DATABASE_ERROR,
-      { author, error: error.message }
+      { author, error: error.message },
+      { category: ErrorCategories.SERVER_ERROR.DATABASE }
     );
   }
 };

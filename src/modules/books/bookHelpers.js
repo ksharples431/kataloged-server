@@ -1,16 +1,18 @@
-import HttpError from '../../errors/httpErrorModel.js';
+import { createCustomError } from '../../errors/customError.js';
 import {
   ErrorCodes,
   HttpStatusCodes,
+  ErrorCategories,
 } from '../../errors/errorConstraints.js';
 
 export const formatBookDetailsResponse = (book) => {
   if (!book || typeof book !== 'object') {
-    throw new HttpError(
+    throw createCustomError(
       'Invalid book object',
       HttpStatusCodes.INTERNAL_SERVER_ERROR,
       ErrorCodes.INVALID_INPUT,
-      { title: book?.title }
+      { title: book?.title },
+      { category: ErrorCategories.SERVER_ERROR.INTERNAL }
     );
   }
   return {
@@ -25,4 +27,3 @@ export const formatBookDetailsResponse = (book) => {
     title: book.title,
   };
 };
-

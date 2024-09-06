@@ -11,7 +11,7 @@ import {
   apiLimiter,
   authLimiter,
 } from './middleware/rateLimitMiddleware.js';
-import { asyncRouteHandler } from './errors/errorHandler.js';
+import { handleAsyncRoute } from './errors/errorUtils.js';
 import { requestLoggingMiddleware } from './middleware/requestLoggingMiddleware.js';
 import { logEntry } from './config/cloudLoggingConfig.js';
 import frontendErrorRoute from './errors/frontendErrors.js';
@@ -31,7 +31,6 @@ const app = express();
 app.use(addRequestId());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-// app.use(setHeaders);
 
 const allowedOrigins = ['https://kataloged.com', 'http://localhost:5173'];
 
@@ -51,16 +50,16 @@ app.use(
 );
 app.options('*', cors());
 
-// Apply rate limiting to all routes
+// Apply middleware
 app.use(requestLoggingMiddleware);
 app.use(apiLimiter);
 
 // Apply more stringent rate limiting to auth routes
 app.use('/api/auth', authLimiter);
 
-// Use asyncRouteHandler for logging incoming requests
+// Log incoming requests
 app.use(
-  asyncRouteHandler(async (req, res, next) => {
+  handleAsyncRoute(async (req, res, next) => {
     await logEntry({
       severity: 'INFO',
       message: `Incoming request: ${req.method} ${req.url}`,
@@ -70,6 +69,7 @@ app.use(
   })
 );
 
+// Routes
 app.use('/api', authRoutes);
 app.use('/api', authorRoutes);
 app.use('/api', bookRoutes);
@@ -80,6 +80,7 @@ app.use('/api', userGenreRoutes);
 app.use('/api', userRoutes);
 app.use('/api', frontendErrorRoute);
 
+// Error handling
 app.use(notFound);
 app.use(errorMiddleware);
 

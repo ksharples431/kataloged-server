@@ -1,4 +1,9 @@
-
+import { createCustomError } from '../../errors/customError.js';
+import {
+  ErrorCodes,
+  HttpStatusCodes,
+  ErrorCategories,
+} from '../../errors/errorConstraints.js';
 import {
   getGenresQuerySchema,
   getGenreBooksQuerySchema,
@@ -8,10 +13,7 @@ import {
   sortBooks,
   formatBookCoverResponse,
 } from '../../utils/globalHelpers.js';
-import {
-  fetchAllGenres,
-  fetchGenreBooks,
-} from './genreService.js';
+import { fetchAllGenres, fetchGenreBooks } from './genreService.js';
 
 export const getGenres = async (req, res) => {
   validateInput(req.query, getGenresQuerySchema);
@@ -19,6 +21,16 @@ export const getGenres = async (req, res) => {
 
   let genres = await fetchAllGenres();
   genres = sortBooks(genres, sortBy, order);
+
+  if (genres.length === 0) {
+    throw createCustomError(
+      'No genres found',
+      HttpStatusCodes.NOT_FOUND,
+      ErrorCodes.RESOURCE_NOT_FOUND,
+      null,
+      { category: ErrorCategories.CLIENT_ERROR.NOT_FOUND }
+    );
+  }
 
   res.status(200).json({
     data: {
@@ -34,9 +46,19 @@ export const getGenreBooks = async (req, res) => {
   const { sortBy = 'title', order = 'asc' } = req.query;
 
   let genreBooks = await fetchGenreBooks(genre);
+
+  if (genreBooks.length === 0) {
+    throw createCustomError(
+      'No books found for this genre',
+      HttpStatusCodes.NOT_FOUND,
+      ErrorCodes.RESOURCE_NOT_FOUND,
+      { genre },
+      { category: ErrorCategories.CLIENT_ERROR.NOT_FOUND }
+    );
+  }
+
   const sortedBooks = sortBooks(genreBooks, sortBy, order);
   genreBooks = sortedBooks.map(formatBookCoverResponse);
-
 
   res.status(200).json({
     data: {

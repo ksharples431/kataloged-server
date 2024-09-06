@@ -1,19 +1,16 @@
 import express from 'express';
 import verifyToken from '../../middleware/tokenMiddleware.js';
-import {
-  login,
-  logout,
-  signup,
-  googleSignIn,
-} from './authController.js';
+import { handleAsyncRoute } from '../../errors/errorUtils.js';
+import { authLimiter } from '../../middleware/rateLimitMiddleware.js';
+import { login, logout, signup, googleSignIn } from './authController.js';
 
 const router = express.Router();
 
-router.get('/auth/login', verifyToken, login);
+router.use('/auth', authLimiter);
 
-router.post('/auth/logout', verifyToken, logout);
-
-router.post('/auth/signup', verifyToken, signup);
-router.post('/auth/google-signin', verifyToken, googleSignIn);
+router.get('/auth/login', verifyToken, handleAsyncRoute(login));
+router.post('/auth/logout', verifyToken, handleAsyncRoute(logout));
+router.post('/auth/signup', handleAsyncRoute(signup));
+router.post('/auth/google-signin', handleAsyncRoute(googleSignIn));
 
 export default router;

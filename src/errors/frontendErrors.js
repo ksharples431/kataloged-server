@@ -1,13 +1,17 @@
 import express from 'express';
-import { logEntry } from '../config/cloudLoggingConfig.js';
+import { logError } from './errorUtils.js';
 
 const router = express.Router();
 
 router.post('/log-frontend-error', async (req, res) => {
   const { message, stack, url, userAgent } = req.body;
 
+  if (!message || !stack || !url || !userAgent) {
+    return res.status(400).json({ message: 'Invalid error log data' });
+  }
+
   try {
-    await logEntry({
+    await logError({
       message: `Frontend Error: ${message}`,
       severity: 'ERROR',
       category: 'ClientError.FrontendError',

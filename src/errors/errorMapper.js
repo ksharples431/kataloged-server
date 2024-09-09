@@ -100,6 +100,12 @@ export const mapAxiosErrorToCustomError = (
 // Map Firebase Auth errors to custom errors
 export const mapFirebaseAuthErrorToCustomError = (err, req = {}) => {
   if (!err) return createUnknownError(err, req);
+
+  // If it's already a CustomError, return it as is
+  if (err.name === 'CustomError') {
+    return err;
+  }
+
   const errorCode =
     firebaseAuthToErrorCode[err.code] || ErrorCodes.FIREBASE_AUTH_ERROR;
   const statusCode =

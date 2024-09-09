@@ -1,59 +1,32 @@
 import { createCustomError } from './customError.js';
 import {
-  mapErrorToCode,
-  mapErrorToCategory,
-  mapErrorToStatusCode,
-} from './errorMapper.js';
-import { getSeverity, shouldLogError } from './errorLogger.js';
-import { logEntry, loggingConfig } from '../config/cloudLoggingConfig.js';
+  HttpStatusCodes,
+  ErrorCodes,
+  ErrorCategories,
+} from './errorConstraints.js';
 
 export const wrapError = (error, options = {}) => {
   if (error.name === 'CustomError') return error;
 
-  const errorInfo = {
-    message: error.message,
-    name: error.name,
-    code: error.code,
-  };
-
   return createCustomError(
     error.message || 'An unknown error occurred',
-    options.statusCode || mapErrorToStatusCode(error),
-    options.errorCode || mapErrorToCode(error),
+    options.statusCode ||
+      error.statusCode ||
+      HttpStatusCodes.INTERNAL_SERVER_ERROR,
+    options.errorCode || error.errorCode || ErrorCodes.UNEXPECTED_ERROR,
     {
-      originalError: errorInfo,
+      originalError: error,
       details: options.details || error.details || null,
     },
     {
-      category: options.category || mapErrorToCategory(error),
-      requestId: options.requestId,
+      category:
+        options.category ||
+        error.category ||
+        ErrorCategories.SERVER_ERROR.UNKNOWN,
+      requestId: options.requestId || error.requestId,
       stack: error.stack,
     }
   );
-};
-
-export const logError = (error, req) => {
-  const severity = getSeverity(error.category);
-  const errorKey = `${error.statusCode}:${error.message}`;
-
-  if (shouldLogError(errorKey)) {
-    if (
-      !loggingConfig.errorOnly ||
-      loggingConfig.logLevels.includes(severity)
-    ) {
-      logEntry({
-        severity,
-        message: `Error: ${error.message}`,
-        errorCode: error.errorCode,
-        stack: error.stack,
-        requestId: req.id,
-        userId: req.user?.uid || 'unauthenticated',
-        category: error.category,
-        statusCode: error.statusCode,
-        details: error.details,
-      }).catch(console.error);
-    }
-  }
 };
 
 export const handleAsyncMiddleware =
@@ -89,7 +62,7 @@ export const handleAsyncErrorMiddleware =
     }
   };
 
-  // Not Found handler for unrecognized routes
+// Not Found handler for unrecognized routes
 export const notFound = (req, res, next) => {
   next(
     createCustomError(
@@ -113,4 +86,3 @@ export const createErrorResponse = (
 ) => {
   return { message, statusCode, errorCode, details };
 };
-

@@ -1,24 +1,38 @@
 import express from 'express';
-import { logError } from './errorUtils.js';
+import { logError } from './errorLogger.js';
 
 const router = express.Router();
 
 router.post('/log-frontend-error', async (req, res) => {
-  const { message, stack, url, userAgent } = req.body;
+  const {
+    message,
+    name,
+    statusCode,
+    errorCode,
+    category,
+    requestId,
+    url,
+    userAgent,
+  } = req.body;
 
-  if (!message || !stack || !url || !userAgent) {
+  if (!message || !name) {
     return res.status(400).json({ message: 'Invalid error log data' });
   }
 
   try {
-    await logError({
-      message: `Frontend Error: ${message}`,
-      severity: 'ERROR',
-      category: 'ClientError.FrontendError',
-      stack,
-      url,
-      userAgent,
-    });
+    await logError(
+      {
+        message,
+        name,
+        statusCode: statusCode || 500,
+        errorCode: errorCode || 'UNKNOWN_ERROR',
+        category: category || 'UnknownError',
+        requestId,
+        url,
+        userAgent,
+      },
+      { id: requestId, originalUrl: url, method: 'POST', ip: req.ip }
+    );
 
     res.status(200).json({ message: 'Error logged successfully' });
   } catch (error) {

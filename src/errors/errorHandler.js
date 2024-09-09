@@ -1,4 +1,5 @@
-import { wrapError, logError } from './errorUtils.js';
+import { wrapError } from './errorUtils.js';
+import { logError } from './errorLogger.js';
 import { mapErrorToCustomError } from './errorMapper.js';
 import { logEntry } from '../config/cloudLoggingConfig.js';
 
@@ -9,8 +10,11 @@ export const globalErrorHandler = async (err, req, res, next) => {
     // Map the error to a custom error
     let error = mapErrorToCustomError(err, req);
 
-    // Wrap the error to ensure consistent structure
-    error = wrapError(error, { requestId: req.id });
+    // Wrap the error to ensure consistent structure, preserving original error code
+    error = wrapError(error, {
+      requestId: req.id,
+      errorCode: error.errorCode || err.errorCode,
+    });
 
     // Log the error
     await logError(error, req);
@@ -24,18 +28,14 @@ export const globalErrorHandler = async (err, req, res, next) => {
       requestId: error.requestId || req.id,
     };
 
-    // Add stack and details to the response in non-production environments
-    if (process.env.NODE_ENV !== 'production') {
-      response.stack = error.stack;
-      if (error.details) {
-        response.details = sanitizeErrorDetails(error.details);
-      }
+    // Add details to the response
+    if (error.details) {
+      response.details = sanitizeErrorDetails(error.details);
     }
 
     // Send error response
     res.status(response.statusCode).json(response);
   } catch (handlerError) {
-    console.error('Error in error handler:', handlerError);
 
     // Log the error in the error handler
     await logEntry({

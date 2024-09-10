@@ -23,14 +23,14 @@ export const getUserAuthors = async (req, res) => {
   const { uid } = req.params;
   const { sortBy = 'name', order = 'asc' } = req.query;
 
-  let authors = await fetchAllUserAuthors(uid);
+  let authors = await fetchAllUserAuthors(uid, req.id);
 
   if (authors.length === 0) {
     throw createCustomError(
       'No authors found for this user',
       HttpStatusCodes.NOT_FOUND,
       ErrorCodes.RESOURCE_NOT_FOUND,
-      { userId: uid },
+      { userId: uid, requestId: req.id },
       { category: ErrorCategories.CLIENT_ERROR.NOT_FOUND }
     );
   }
@@ -50,20 +50,22 @@ export const getUserAuthorBooks = async (req, res) => {
   const { uid, author } = req.params;
   const { sortBy = 'title', order = 'asc' } = req.query;
 
-  let authorBooks = await fetchUserAuthorBooks(uid, author);
+  let authorBooks = await fetchUserAuthorBooks(uid, author, req.id);
 
   if (authorBooks.length === 0) {
     throw createCustomError(
       'No books found for this user and author',
       HttpStatusCodes.NOT_FOUND,
       ErrorCodes.RESOURCE_NOT_FOUND,
-      { userId: uid, author },
+      { userId: uid, author, requestId: req.id },
       { category: ErrorCategories.CLIENT_ERROR.NOT_FOUND }
     );
   }
 
   const sortedBooks = sortBooks(authorBooks, sortBy, order);
-  authorBooks = sortedBooks.map(formatBookCoverResponse);
+  authorBooks = sortedBooks.map((book) =>
+    formatBookCoverResponse(book, req.id)
+  );
 
   res.status(200).json({
     data: {

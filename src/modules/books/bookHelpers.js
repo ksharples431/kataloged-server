@@ -5,13 +5,13 @@ import {
   ErrorCategories,
 } from '../../errors/errorConstraints.js';
 
-export const formatBookDetailsResponse = (book) => {
+export const formatBookDetailsResponse = (book, requestId) => {
   if (!book || typeof book !== 'object') {
     throw createCustomError(
       'Invalid book object',
       HttpStatusCodes.INTERNAL_SERVER_ERROR,
       ErrorCodes.INVALID_INPUT,
-      { title: book?.title },
+      { title: book?.title, requestId },
       { category: ErrorCategories.SERVER_ERROR.INTERNAL }
     );
   }

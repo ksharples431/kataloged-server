@@ -31,7 +31,7 @@ export const getUserById = async (req, res) => {
       'User not found',
       HttpStatusCodes.NOT_FOUND,
       ErrorCodes.RESOURCE_NOT_FOUND,
-      { userId: uid },
+      { userId: uid, requestId: req.id },
       { category: ErrorCategories.CLIENT_ERROR.NOT_FOUND }
     );
   }
@@ -42,6 +42,7 @@ export const getUserById = async (req, res) => {
     user: { uid: userDoc.id, ...userData },
   });
 };
+
 
 export const updateUser = async (req, res) => {
   const { uid } = req.params;
@@ -55,7 +56,7 @@ export const updateUser = async (req, res) => {
       'User not found',
       HttpStatusCodes.NOT_FOUND,
       ErrorCodes.RESOURCE_NOT_FOUND,
-      { userId: uid },
+      { userId: uid, requestId: req.id },
       { category: ErrorCategories.CLIENT_ERROR.NOT_FOUND }
     );
   }
@@ -86,7 +87,7 @@ export const deleteUser = async (req, res) => {
       'User not found',
       HttpStatusCodes.NOT_FOUND,
       ErrorCodes.RESOURCE_NOT_FOUND,
-      { userId: uid },
+      { userId: uid, requestId: req.id },
       { category: ErrorCategories.CLIENT_ERROR.NOT_FOUND }
     );
   }

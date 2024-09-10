@@ -41,7 +41,7 @@ export const fetchAllGenres = async () => {
       'Failed to map genres from books',
       HttpStatusCodes.INTERNAL_SERVER_ERROR,
       ErrorCodes.DATABASE_ERROR,
-      { error: error.message },
+      { error: error.message, requestId },
       { category: ErrorCategories.SERVER_ERROR.DATABASE }
     );
   }
@@ -57,7 +57,7 @@ export const fetchGenreBooks = async (genre) => {
         'No books found for this genre',
         HttpStatusCodes.NOT_FOUND,
         ErrorCodes.RESOURCE_NOT_FOUND,
-        { genre },
+        { genre, requestId },
         { category: ErrorCategories.CLIENT_ERROR.NOT_FOUND }
       );
     }
@@ -69,7 +69,7 @@ export const fetchGenreBooks = async (genre) => {
       'Failed to map books for genre',
       HttpStatusCodes.INTERNAL_SERVER_ERROR,
       ErrorCodes.DATABASE_ERROR,
-      { genre, error: error.message },
+      { genre, error: error.message, requestId },
       { category: ErrorCategories.SERVER_ERROR.DATABASE }
     );
   }

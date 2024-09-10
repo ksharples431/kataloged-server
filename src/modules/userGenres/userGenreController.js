@@ -23,14 +23,14 @@ export const getUserGenres = async (req, res) => {
   const { uid } = req.params;
   const { sortBy = 'name', order = 'asc' } = req.query;
 
-  let genres = await fetchAllUserGenres(uid);
+  let genres = await fetchAllUserGenres(uid, req.id);
 
   if (genres.length === 0) {
     throw createCustomError(
       'No genres found for this user',
       HttpStatusCodes.NOT_FOUND,
       ErrorCodes.RESOURCE_NOT_FOUND,
-      { userId: uid },
+      { userId: uid, requestId: req.id },
       { category: ErrorCategories.CLIENT_ERROR.NOT_FOUND }
     );
   }
@@ -50,20 +50,22 @@ export const getUserGenreBooks = async (req, res) => {
   const { uid, genre } = req.params;
   const { sortBy = 'title', order = 'asc' } = req.query;
 
-  let genreBooks = await fetchUserGenreBooks(uid, genre);
+  let genreBooks = await fetchUserGenreBooks(uid, genre, req.id);
 
   if (genreBooks.length === 0) {
     throw createCustomError(
       'No books found for this user and genre',
       HttpStatusCodes.NOT_FOUND,
       ErrorCodes.RESOURCE_NOT_FOUND,
-      { userId: uid, genre },
+      { userId: uid, genre, requestId: req.id },
       { category: ErrorCategories.CLIENT_ERROR.NOT_FOUND }
     );
   }
 
   const sortedBooks = sortBooks(genreBooks, sortBy, order);
-  genreBooks = sortedBooks.map(formatBookCoverResponse);
+  genreBooks = sortedBooks.map((book) =>
+    formatBookCoverResponse(book, req.id)
+  );
 
   res.status(200).json({
     data: {

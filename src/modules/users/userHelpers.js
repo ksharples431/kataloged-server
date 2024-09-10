@@ -8,14 +8,14 @@ import {
 
 const userCollection = db.collection('users');
 
-export const fetchUserById = async (uid) => {
+export const fetchUserById = async (uid, requestId) => {
   const userDoc = await userCollection.doc(uid).get();
   if (!userDoc.exists) {
     throw createCustomError(
       'User not found',
       HttpStatusCodes.NOT_FOUND,
       ErrorCodes.RESOURCE_NOT_FOUND,
-      { uid },
+      { uid, requestId },
       { category: ErrorCategories.CLIENT_ERROR.NOT_FOUND }
     );
   }

@@ -10,11 +10,11 @@ import { combineBooksData } from '../userBooks/userBookService.js';
 
 const userBookCollection = db.collection('userBooks');
 
-export const fetchAllUserAuthors = async (uid) => {
+export const fetchAllUserAuthors = async (uid, requestId) => {
   try {
     const query = userBookCollection.where('uid', '==', uid);
-    const userBooks = await executeQuery(query);
-    const combinedBooks = await combineBooksData(userBooks);
+    const userBooks = await executeQuery(query, requestId);
+    const combinedBooks = await combineBooksData(userBooks, requestId);
     const authorMap = new Map();
 
     combinedBooks.forEach((book) => {
@@ -44,28 +44,28 @@ export const fetchAllUserAuthors = async (uid) => {
       'Failed to map user authors from books',
       HttpStatusCodes.INTERNAL_SERVER_ERROR,
       ErrorCodes.DATABASE_ERROR,
-      { uid, error: error.message },
+      { uid, error: error.message, requestId },
       { category: ErrorCategories.SERVER_ERROR.DATABASE }
     );
   }
 };
 
-export const fetchUserAuthorBooks = async (uid, author) => {
+export const fetchUserAuthorBooks = async (uid, author, requestId) => {
   try {
     const query = userBookCollection.where('uid', '==', uid);
-    const userBooks = await executeQuery(query);
+    const userBooks = await executeQuery(query, requestId);
 
     if (userBooks.length === 0) {
       throw createCustomError(
         'No books found for this user',
         HttpStatusCodes.NOT_FOUND,
         ErrorCodes.RESOURCE_NOT_FOUND,
-        { uid },
+        { uid, requestId },
         { category: ErrorCategories.CLIENT_ERROR.NOT_FOUND }
       );
     }
 
-    const combinedBooks = await combineBooksData(userBooks);
+    const combinedBooks = await combineBooksData(userBooks, requestId);
     const authorBooks = combinedBooks.filter(
       (book) => book.author === author
     );
@@ -75,7 +75,7 @@ export const fetchUserAuthorBooks = async (uid, author) => {
         'No books found for this author',
         HttpStatusCodes.NOT_FOUND,
         ErrorCodes.RESOURCE_NOT_FOUND,
-        { uid, author },
+        { uid, author, requestId },
         { category: ErrorCategories.CLIENT_ERROR.NOT_FOUND }
       );
     }
@@ -87,7 +87,7 @@ export const fetchUserAuthorBooks = async (uid, author) => {
       'Failed to map books for user and author',
       HttpStatusCodes.INTERNAL_SERVER_ERROR,
       ErrorCodes.DATABASE_ERROR,
-      { uid, author, error: error.message },
+      { uid, author, error: error.message, requestId },
       { category: ErrorCategories.SERVER_ERROR.DATABASE }
     );
   }

@@ -1,13 +1,26 @@
 import firebase from 'firebase-admin';
-import db from '../../../config/firebaseConfig.js';
-import { createCustomError } from '../../../errors/customError.js';
+import db from '../../config/firebaseConfig.js';
+import { createCustomError } from '../../errors/customError.js';
 import {
   ErrorCodes,
   HttpStatusCodes,
   ErrorCategories,
-} from '../../../errors/errorConstraints.js';
+} from '../../errors/errorConstraints.js';
 
 const userCollection = db.collection('users');
+
+export const validateInput = (data, schema) => {
+  const { error } = schema.validate(data);
+  if (error) {
+    throw createCustomError(
+      error.details[0].message,
+      HttpStatusCodes.BAD_REQUEST,
+      ErrorCodes.INVALID_INPUT,
+      { details: error.details },
+      { category: ErrorCategories.CLIENT_ERROR.VALIDATION }
+    );
+  }
+};
 
 export const handleUserCreationOrFetch = async (uid, userData) => {
   try {

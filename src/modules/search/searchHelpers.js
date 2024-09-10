@@ -40,7 +40,7 @@ export const buildQuery = ({ title, author, isbn }) => {
   return query;
 };
 
-export const buildGoogleQuery = ({ title, author, isbn }) => {
+export const buildGoogleQuery = ({ title, author, isbn }, requestId) => {
   if (isbn) {
     return `isbn:${isbn}`;
   } else if (title && author) {
@@ -54,12 +54,12 @@ export const buildGoogleQuery = ({ title, author, isbn }) => {
     'Invalid search parameters',
     HttpStatusCodes.BAD_REQUEST,
     ErrorCodes.INVALID_INPUT,
-    { title, author, isbn },
+    { title, author, isbn, requestId },
     { category: ErrorCategories.CLIENT_ERROR.VALIDATION }
   );
 };
 
-export const buildGeneralSearchQuery = (query) => {
+export const buildGeneralSearchQuery = (query, requestId) => {
   const lowercaseQuery = query.toLowerCase();
   return new Promise(async (resolve, reject) => {
     try {
@@ -90,7 +90,7 @@ export const buildGeneralSearchQuery = (query) => {
           'Error building general search query',
           HttpStatusCodes.INTERNAL_SERVER_ERROR,
           ErrorCodes.DATABASE_ERROR,
-          { query, error: error.message },
+          { query, error: error.message, requestId },
           { category: ErrorCategories.SERVER_ERROR.DATABASE }
         )
       );
@@ -98,7 +98,7 @@ export const buildGeneralSearchQuery = (query) => {
   });
 };
 
-export const executeQuery = async (query) => {
+export const executeQuery = async (query, requestId) => {
   try {
     if (query instanceof Promise) {
       // If query is a Promise (as in the case of buildGeneralSearchQuery), await it
@@ -114,7 +114,7 @@ export const executeQuery = async (query) => {
       'Error executing database query',
       HttpStatusCodes.INTERNAL_SERVER_ERROR,
       ErrorCodes.DATABASE_ERROR,
-      { error: error.message },
+      { error: error.message, requestId },
       { category: ErrorCategories.SERVER_ERROR.DATABASE }
     );
   }
@@ -133,7 +133,7 @@ export const buildRequestConfig = (googleQuery) => {
   };
 };
 
-export const fetchBooksFromGoogleAPI = async (config) => {
+export const fetchBooksFromGoogleAPI = async (config, requestId) => {
   try {
     const response = await axios.get(GOOGLE_BOOKS_API_URL, config);
     return response.data;
@@ -143,7 +143,7 @@ export const fetchBooksFromGoogleAPI = async (config) => {
         'Google Books API Error',
         error.response?.status || HttpStatusCodes.INTERNAL_SERVER_ERROR,
         ErrorCodes.API_REQUEST_FAILED,
-        { message: error.message },
+        { message: error.message, requestId },
         { category: ErrorCategories.SERVER_ERROR.EXTERNAL_API }
       );
     }
@@ -151,7 +151,7 @@ export const fetchBooksFromGoogleAPI = async (config) => {
       'Unknown error occurred while fetching books from Google API',
       HttpStatusCodes.INTERNAL_SERVER_ERROR,
       ErrorCodes.UNEXPECTED_ERROR,
-      { error: error.message },
+      { error: error.message, requestId },
       { category: ErrorCategories.SERVER_ERROR.UNKNOWN }
     );
   }
@@ -168,13 +168,13 @@ export const processApiResponse = (data) => {
 };
 
 // Mapping Helpers
-export const mapBookItem = (item) => {
+export const mapBookItem = (item, requestId) => {
   if (!item || !item.volumeInfo) {
     throw createCustomError(
       'Invalid book item',
       HttpStatusCodes.INTERNAL_SERVER_ERROR,
       ErrorCodes.INVALID_INPUT,
-      { title: item.volumeInfo?.title },
+      { title: item.volumeInfo?.title, requestId },
       { category: ErrorCategories.SERVER_ERROR.INTERNAL }
     );
   }

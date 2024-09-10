@@ -6,12 +6,12 @@ import {
 } from '../../errors/errorConstraints.js';
 import { adminAuth } from '../../config/firebaseConfig.js';
 import { tokenCache } from '../../middleware/tokenMiddleware.js';
-import { validateInput } from './helpers/validationHelpers.js';
 import { googleSignInSchema, signupSchema } from './authModel.js';
 import {
+  validateInput,
   fetchUserById,
   handleUserCreationOrFetch,
-} from './helpers/utilityHelpers.js';
+} from './authHelpers.js';
 
 export const googleSignIn = async (req, res) => {
   validateInput(req.body, googleSignInSchema);
@@ -24,7 +24,7 @@ export const googleSignIn = async (req, res) => {
       'No user id provided, authentication failed',
       HttpStatusCodes.UNAUTHORIZED,
       ErrorCodes.INVALID_CREDENTIALS,
-      null,
+      { requestId: req.id },
       { category: ErrorCategories.CLIENT_ERROR.AUTHENTICATION }
     );
   }
@@ -53,7 +53,7 @@ export const signup = async (req, res) => {
       'No user id provided, authentication failed',
       HttpStatusCodes.UNAUTHORIZED,
       ErrorCodes.INVALID_CREDENTIALS,
-      null,
+      { requestId: req.id },
       { category: ErrorCategories.CLIENT_ERROR.AUTHENTICATION }
     );
   }
@@ -67,7 +67,7 @@ export const signup = async (req, res) => {
         'User with this UID already exists',
         HttpStatusCodes.CONFLICT,
         ErrorCodes.RESOURCE_ALREADY_EXISTS,
-        { userId: uid },
+        { userId: uid, requestId: req.id },
         { category: ErrorCategories.CLIENT_ERROR.CONFLICT }
       );
     }
@@ -88,7 +88,7 @@ export const login = async (req, res) => {
       'No user id provided, authentication failed',
       HttpStatusCodes.UNAUTHORIZED,
       ErrorCodes.INVALID_CREDENTIALS,
-      null,
+      { requestId: req.id },
       { category: ErrorCategories.CLIENT_ERROR.AUTHENTICATION }
     );
   }
@@ -109,7 +109,7 @@ export const logout = async (req, res) => {
       'Invalid authorization header format',
       HttpStatusCodes.UNAUTHORIZED,
       ErrorCodes.INVALID_CREDENTIALS,
-      null,
+      { requestId: req.id },
       { category: ErrorCategories.CLIENT_ERROR.AUTHENTICATION }
     );
   }
@@ -123,7 +123,7 @@ export const logout = async (req, res) => {
       'No user id provided, authentication failed',
       HttpStatusCodes.UNAUTHORIZED,
       ErrorCodes.INVALID_CREDENTIALS,
-      null,
+      { requestId: req.id },
       { category: ErrorCategories.CLIENT_ERROR.AUTHENTICATION }
     );
   }

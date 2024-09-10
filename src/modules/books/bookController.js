@@ -27,7 +27,7 @@ import {
 export const checkBookExists = async (req, res) => {
   const { bid } = req.params;
 
-  const book = await checkBookExistsHelper(bid);
+  const book = await checkBookExistsHelper(bid, req.id);
 
   res.status(200).json({
     data: {
@@ -40,19 +40,19 @@ export const checkBookExists = async (req, res) => {
 export const getBookById = async (req, res) => {
   const { bid } = req.params;
 
-  let book = await fetchBookById(bid);
+  let book = await fetchBookById(bid, req.id);
 
   if (!book) {
     throw createCustomError(
       'Book not found',
       HttpStatusCodes.NOT_FOUND,
       ErrorCodes.RESOURCE_NOT_FOUND,
-      { bookId: bid },
+      { bookId: bid, requestId: req.id },
       { category: ErrorCategories.CLIENT_ERROR.NOT_FOUND }
     );
   }
 
-  book = formatBookDetailsResponse(book);
+  book = formatBookDetailsResponse(book, req.id);
 
   res.status(200).json({
     data: {
@@ -66,9 +66,9 @@ export const getBooks = async (req, res) => {
   validateInput(req.query, getBooksQuerySchema);
   const { sortBy = 'title', order = 'asc' } = req.query;
 
-  let books = await fetchAllBooks();
+  let books = await fetchAllBooks(req.id);
   const sortedBooks = sortBooks(books, sortBy, order);
-  books = sortedBooks.map(formatBookCoverResponse);
+  books = sortedBooks.map((book) => formatBookCoverResponse(book, req.id));
 
   res.status(200).json({
     data: {
@@ -84,8 +84,8 @@ export const getBooks = async (req, res) => {
 export const createBook = async (req, res) => {
   validateInput(req.body, createBookSchema);
 
-  let book = await createBookHelper(req.body);
-  book = formatBookCoverResponse(book);
+  let book = await createBookHelper(req.body, req.id);
+  book = formatBookCoverResponse(book, req.id);
 
   res.status(201).json({
     data: {
@@ -100,17 +100,17 @@ export const updateBook = async (req, res) => {
   const { bid } = req.params;
   const updateData = req.body;
 
-  let updatedBook = await updateBookHelper(bid, updateData);
+  let updatedBook = await updateBookHelper(bid, updateData, req.id);
   if (!updatedBook) {
     throw createCustomError(
       'Book not found',
       HttpStatusCodes.NOT_FOUND,
       ErrorCodes.RESOURCE_NOT_FOUND,
-      { bookId: bid },
+      { bookId: bid, requestId: req.id },
       { category: ErrorCategories.CLIENT_ERROR.NOT_FOUND }
     );
   }
-  updatedBook = formatBookCoverResponse(updatedBook);
+  updatedBook = formatBookCoverResponse(updatedBook, req.id);
 
   res.status(200).json({
     data: {
@@ -123,13 +123,13 @@ export const updateBook = async (req, res) => {
 export const deleteBook = async (req, res) => {
   const { bid } = req.params;
 
-  const deleted = await deleteBookHelper(bid);
+  const deleted = await deleteBookHelper(bid, req.id);
   if (!deleted) {
     throw createCustomError(
       'Book not found',
       HttpStatusCodes.NOT_FOUND,
       ErrorCodes.RESOURCE_NOT_FOUND,
-      { bookId: bid },
+      { bookId: bid, requestId: req.id },
       { category: ErrorCategories.CLIENT_ERROR.NOT_FOUND }
     );
   }

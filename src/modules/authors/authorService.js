@@ -41,7 +41,7 @@ export const fetchAllAuthors = async () => {
       'Failed to fetch authors',
       HttpStatusCodes.INTERNAL_SERVER_ERROR,
       ErrorCodes.DATABASE_ERROR,
-      { error: error.message },
+      { error: error.message, requestId },
       { category: ErrorCategories.SERVER_ERROR.DATABASE }
     );
   }
@@ -57,7 +57,7 @@ export const fetchAuthorBooks = async (author) => {
         'No books found for this author',
         HttpStatusCodes.NOT_FOUND,
         ErrorCodes.RESOURCE_NOT_FOUND,
-        { author },
+        { author, requestId },
         { category: ErrorCategories.CLIENT_ERROR.NOT_FOUND }
       );
     }
@@ -69,7 +69,7 @@ export const fetchAuthorBooks = async (author) => {
       'Failed to fetch books for author',
       HttpStatusCodes.INTERNAL_SERVER_ERROR,
       ErrorCodes.DATABASE_ERROR,
-      { author, error: error.message },
+      { author, error: error.message, requestId },
       { category: ErrorCategories.SERVER_ERROR.DATABASE }
     );
   }

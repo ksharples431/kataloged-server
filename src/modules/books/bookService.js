@@ -13,7 +13,7 @@ import {
 const bookCollection = db.collection('books');
 const userBookCollection = db.collection('userBooks');
 
-export const fetchBookById = async (bid) => {
+export const fetchBookById = async (bid, requestId) => {
   try {
     const query = bookCollection.doc(bid);
     const [book] = await executeQuery(query);
@@ -23,7 +23,7 @@ export const fetchBookById = async (bid) => {
         'Book not found',
         HttpStatusCodes.NOT_FOUND,
         ErrorCodes.RESOURCE_NOT_FOUND,
-        { bid },
+        { bid, requestId },
         { category: ErrorCategories.CLIENT_ERROR.NOT_FOUND }
       );
     }
@@ -35,13 +35,13 @@ export const fetchBookById = async (bid) => {
       'Error fetching book',
       HttpStatusCodes.INTERNAL_SERVER_ERROR,
       ErrorCodes.DATABASE_ERROR,
-      { bid, error: error.message },
+      { bid, error: error.message, requestId },
       { category: ErrorCategories.SERVER_ERROR.DATABASE }
     );
   }
 };
 
-export const fetchAllBooks = async () => {
+export const fetchAllBooks = async (requestId) => {
   try {
     const query = bookCollection;
     return await executeQuery(query);
@@ -50,19 +50,16 @@ export const fetchAllBooks = async () => {
       'Error fetching all books',
       HttpStatusCodes.INTERNAL_SERVER_ERROR,
       ErrorCodes.DATABASE_ERROR,
-      { error: error.message },
+      { error: error.message, requestId },
       { category: ErrorCategories.SERVER_ERROR.DATABASE }
     );
   }
 };
 
-export const createBookHelper = async ({
-  title,
-  author,
-  imagePath,
-  isbn,
-  ...otherFields
-}) => {
+export const createBookHelper = async (
+  { title, author, imagePath, isbn, ...otherFields },
+  requestId
+) => {
   try {
     if (isbn) {
       const query = bookCollection.where('isbn', '==', isbn);
@@ -73,7 +70,7 @@ export const createBookHelper = async ({
           'A book with this ISBN already exists',
           HttpStatusCodes.CONFLICT,
           ErrorCodes.RESOURCE_ALREADY_EXISTS,
-          { isbn },
+          { isbn, requestId },
           { category: ErrorCategories.CLIENT_ERROR.CONFLICT }
         );
       }
@@ -99,13 +96,13 @@ export const createBookHelper = async ({
       'Error creating book',
       HttpStatusCodes.INTERNAL_SERVER_ERROR,
       ErrorCodes.DATABASE_ERROR,
-      { title, author, isbn, error: error.message },
+      { title, author, isbn, error: error.message, requestId },
       { category: ErrorCategories.SERVER_ERROR.DATABASE }
     );
   }
 };
 
-export const updateBookHelper = async (bid, updateData) => {
+export const updateBookHelper = async (bid, updateData, requestId) => {
   try {
     const query = bookCollection.doc(bid);
     const [book] = await executeQuery(query);
@@ -115,7 +112,7 @@ export const updateBookHelper = async (bid, updateData) => {
         'Book not found',
         HttpStatusCodes.NOT_FOUND,
         ErrorCodes.RESOURCE_NOT_FOUND,
-        { bid },
+        { bid, requestId },
         { category: ErrorCategories.CLIENT_ERROR.NOT_FOUND }
       );
     }
@@ -140,13 +137,13 @@ export const updateBookHelper = async (bid, updateData) => {
       'Error updating book',
       HttpStatusCodes.INTERNAL_SERVER_ERROR,
       ErrorCodes.DATABASE_ERROR,
-      { bid, updateData, error: error.message },
+      { bid, updateData, error: error.message, requestId },
       { category: ErrorCategories.SERVER_ERROR.DATABASE }
     );
   }
 };
 
-export const deleteBookHelper = async (bid) => {
+export const deleteBookHelper = async (bid, requestId) => {
   try {
     const query = bookCollection.doc(bid);
     const [book] = await executeQuery(query);
@@ -156,7 +153,7 @@ export const deleteBookHelper = async (bid) => {
         'Book not found',
         HttpStatusCodes.NOT_FOUND,
         ErrorCodes.RESOURCE_NOT_FOUND,
-        { bid },
+        { bid, requestId },
         { category: ErrorCategories.CLIENT_ERROR.NOT_FOUND }
       );
     }
@@ -178,13 +175,13 @@ export const deleteBookHelper = async (bid) => {
       'Error deleting book',
       HttpStatusCodes.INTERNAL_SERVER_ERROR,
       ErrorCodes.DATABASE_ERROR,
-      { bid, error: error.message },
+      { bid, error: error.message, requestId },
       { category: ErrorCategories.SERVER_ERROR.DATABASE }
     );
   }
 };
 
-export const checkBookExistsHelper = async (bid) => {
+export const checkBookExistsHelper = async (bid, requestId) => {
   try {
     const query = bookCollection.doc(bid);
     const [book] = await executeQuery(query);
@@ -194,7 +191,7 @@ export const checkBookExistsHelper = async (bid) => {
       'Error checking book existence',
       HttpStatusCodes.INTERNAL_SERVER_ERROR,
       ErrorCodes.DATABASE_ERROR,
-      { bid, error: error.message },
+      { bid, error: error.message, requestId },
       { category: ErrorCategories.SERVER_ERROR.DATABASE }
     );
   }

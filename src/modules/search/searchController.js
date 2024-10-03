@@ -26,8 +26,19 @@ export const searchBook = async (req, res) => {
 };
 
 export const searchGoogleBooks = async (req, res) => {
-  validateInput(req.query, searchBookSchema);
+  console.log('Received query:', req.query); // Add this line for debugging
+
   const { title, author, isbn } = req.query;
+
+  if (!title && !author && !isbn) {
+    throw createCustomError(
+      'At least one search parameter (title, author, or isbn) must be provided',
+      HttpStatusCodes.BAD_REQUEST,
+      ErrorCodes.INVALID_INPUT,
+      { requestId: req.id },
+      { category: ErrorCategories.CLIENT_ERROR.VALIDATION }
+    );
+  }
 
   const googleQuery = buildGoogleQuery({ title, author, isbn });
   let books = await searchBooksInGoogleAPI(googleQuery, 20, req.id);

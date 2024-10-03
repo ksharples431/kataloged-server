@@ -1,45 +1,82 @@
+import { validateInput } from './authHelpers.js';
+import { googleSignInSchema } from './authModel.js';
+import { adminAuth } from '../../config/firebaseConfig.js';
 import { createCustomError } from '../../errors/customError.js';
 import {
   ErrorCodes,
   HttpStatusCodes,
   ErrorCategories,
 } from '../../errors/errorConstraints.js';
-import { adminAuth } from '../../config/firebaseConfig.js';
+import db from '../../config/firebaseConfig.js';
 import { tokenCache } from '../../middleware/tokenMiddleware.js';
-import { googleSignInSchema, signupSchema } from './authModel.js';
-import {
-  validateInput,
-  fetchUserById,
-  handleUserCreationOrFetch,
-} from './authHelpers.js';
 
-export const googleSignIn = async (req, res) => {
-  validateInput(req.body, googleSignInSchema);
+const userCollection = db.collection('users');
 
-  const { email } = req.body;
-  const { uid, username } = req.user;
+export const googleSignIn = async (req, res, next) => {
+  try {
+    // Validate input
+    validateInput(req.body, googleSignInSchema);
 
-  if (!uid) {
-    throw createCustomError(
-      'No user id provided, authentication failed',
-      HttpStatusCodes.UNAUTHORIZED,
-      ErrorCodes.INVALID_CREDENTIALS,
-      { requestId: req.id },
-      { category: ErrorCategories.CLIENT_ERROR.AUTHENTICATION }
-    );
+    const { idToken } = req.body;
+
+    if (!idToken) {
+      throw createCustomError(
+        'ID token is missing',
+        HttpStatusCodes.BAD_REQUEST,
+        ErrorCodes.INVALID_INPUT,
+        { requestId: req.id },
+        { category: ErrorCategories.CLIENT_ERROR.VALIDATION }
+      );
+    }
+
+    // Verify the ID token with Firebase Admin SDK
+    const decodedToken = await adminAuth.verifyIdToken(idToken);
+    const { uid, email: verifiedEmail } = decodedToken;
+
+    // Retrieve or create the user in your database
+    let user = await userCollection.doc(uid).get();
+    let isNewUser = false;
+
+    if (!user.exists) {
+      isNewUser = true;
+      const now = new Date().toISOString();
+      const newUser = {
+        username: verifiedEmail.split('@')[0], // Default username from email
+        email: verifiedEmail,
+        createdAt: now,
+        updatedAt: now,
+      };
+
+      await userCollection.doc(uid).set(newUser);
+      user = await userCollection.doc(uid).get();
+
+      if (!user.exists) {
+        throw createCustomError(
+          'Failed to create user',
+          HttpStatusCodes.INTERNAL_SERVER_ERROR,
+          ErrorCodes.DATABASE_ERROR,
+          { uid, email: verifiedEmail },
+          { category: ErrorCategories.SERVER_ERROR.DATABASE }
+        );
+      }
+    }
+
+    // Prepare user data
+    const userData = {
+      uid: user.id,
+      ...user.data(),
+    };
+
+    // Respond with appropriate message
+    res.status(200).json({
+      message: isNewUser
+        ? 'User created successfully'
+        : 'User signed in successfully',
+      user: userData,
+    });
+  } catch (error) {
+    next(error);
   }
-
-  const userData = {
-    username: username || email.split('@')[0],
-    email,
-  };
-
-  const user = await handleUserCreationOrFetch(uid, userData);
-
-  res.status(200).json({
-    message: 'User signed in successfully',
-    user,
-  });
 };
 
 export const signup = async (req, res) => {
@@ -128,7 +165,19 @@ export const logout = async (req, res) => {
     );
   }
 
-  await adminAuth.revokeRefreshTokens(uid);
-
-  res.status(200).json({ message: 'User logged out successfully' });
+  try {
+    await adminAuth.revokeRefreshTokens(uid);
+    res.status(200).json({ message: 'User logged out successfully' });
+  } catch (error) {
+    throw createCustomError(
+      'Failed to revoke refresh tokens',
+      HttpStatusCodes.INTERNAL_SERVER_ERROR,
+      ErrorCodes.UNEXPECTED_ERROR,
+      { requestId: req.id, uid },
+      {
+        category: ErrorCategories.SERVER_ERROR.INTERNAL,
+        originalError: error,
+      }
+    );
+  }
 };

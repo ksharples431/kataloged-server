@@ -1,7 +1,9 @@
 import Joi from 'joi';
 
 export const googleSignInSchema = Joi.object({
-  email: Joi.string().email().required(),
+  idToken: Joi.string().required(),
+  // Make email optional, as we can get it from the verified token
+  email: Joi.string().email().optional(),
 });
 
 export const signupSchema = Joi.object({

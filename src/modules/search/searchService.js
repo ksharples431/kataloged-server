@@ -12,7 +12,7 @@ import {
   fetchBooksFromGoogleAPI,
   processApiResponse,
 } from './searchHelpers.js';
-import { fetchUserBooks } from '../userBooks/services/userBookService.js';
+import { fetchUserBooks } from '../userBooks/userBookService.js';
 
 export async function searchBooksInDatabase(searchParams, requestId) {
   try {

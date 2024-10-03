@@ -36,7 +36,7 @@ export const apiLimiter = rateLimit({
 
 export const authLimiter = rateLimit({
   windowMs: config.rateLimit.auth.windowMs,
-  max: isProd ? config.rateLimit.auth.max : config.rateLimit.auth.max * 4, // More lenient in development
+  max: isProd ? config.rateLimit.auth.max : config.rateLimit.auth.max * 40, // More lenient in development
   message: 'Too many login attempts, please try again after an hour.',
   handler: (req, res, next, options) => {
     next(
@@ -47,7 +47,7 @@ export const authLimiter = rateLimit({
         {
           limit: isProd
             ? config.rateLimit.auth.max
-            : config.rateLimit.auth.max * 4,
+            : config.rateLimit.auth.max * 40,
           windowMs: config.rateLimit.auth.windowMs,
           requestId: req.id,
         },

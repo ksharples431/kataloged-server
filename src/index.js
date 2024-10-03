@@ -2,7 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import addRequestId from 'express-request-id';
-
+// import setSecurityHeaders from './middleware/headersMiddleware.js';
 import {
   errorMiddleware,
   notFound,
@@ -23,6 +23,7 @@ import authorRoutes from './modules/authors/authorRoutes.js';
 import userBookRoutes from './modules/userBooks/userBookRoutes.js';
 import userGenreRoutes from './modules/userGenres/userGenreRoutes.js';
 import userAuthorRoutes from './modules/userAuthors/userAuthorRoutes.js';
+import searchRoutes from './modules/search/searchRoutes.js';
 
 dotenv.config();
 
@@ -31,6 +32,13 @@ const app = express();
 app.use(addRequestId());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+// app.use(setSecurityHeaders); 
+
+app.use((req, res, next) => {
+  res.setHeader('Cross-Origin-Opener-Policy', 'unsafe-none');
+  res.setHeader('Cross-Origin-Embedder-Policy', 'unsafe-none');
+  next();
+});
 
 const allowedOrigins = ['https://kataloged.com', 'http://localhost:5173'];
 
@@ -79,6 +87,7 @@ app.use('/api', userBookRoutes);
 app.use('/api', userGenreRoutes);
 app.use('/api', userRoutes);
 app.use('/api', frontendErrorRoute);
+app.use('/api', searchRoutes);
 
 // Error handling
 app.use(notFound);

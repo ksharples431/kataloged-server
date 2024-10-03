@@ -85,3 +85,43 @@ wishlist;
 updatedAt;
 createdAt;
 updatedAt;
+
+
+baseQuery.js:19 
+ POST http://localhost:8080/api/auth/logout 500 (Internal Server Error)
+await in (anonymous)		
+baseQueryWithReauth	@	baseQuery.js:19
+dispatch	@	page.bundle.js:6
+handleLogout	@	HeaderActions.jsx:23
+Show 29 more frames
+HeaderActions.jsx:26 Failed to log out: 
+{status: 500, data: {…}}
+data
+: 
+category
+: 
+"ServerError.UnknownError"
+details
+: 
+{originalError: {…}, requestId: '4bab1970-2ef0-41b2-b188-66656de57e13'}
+errorCode
+: 
+"UNKNOWN_ERROR"
+message
+: 
+"The Firebase ID token has been revoked."
+requestId
+: 
+"4bab1970-2ef0-41b2-b188-66656de57e13"
+statusCode
+: 
+500
+[[Prototype]]
+: 
+Object
+status
+: 
+500
+[[Prototype]]
+: 
+Object

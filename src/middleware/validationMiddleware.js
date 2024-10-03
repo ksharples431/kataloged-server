@@ -1,13 +1,18 @@
 import { validateInput } from '../utils/globalHelpers.js';
 import { handleJoiValidationError } from '../errors/validationErrorHandlers.js';
 
-export const validateRequest = (schema, type = 'body') => {
+export const validateRequest = (schema, type = 'query') => {
   return (req, res, next) => {
+    console.log('Validating request:', req[type]); // Add this line for debugging
     try {
-      validateInput(req[type], schema);
+      const { error } = schema.validate(req[type], { abortEarly: false });
+      if (error) {
+        throw error;
+      }
       next();
     } catch (error) {
-      next(handleJoiValidationError(error, req));
+      const validationError = handleJoiValidationError(error, req);
+      res.status(validationError.statusCode).json(validationError);
     }
   };
 };

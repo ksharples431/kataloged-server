@@ -14,7 +14,7 @@ import {
 import { handleAsyncRoute } from './errors/errorUtils.js';
 import { requestLoggingMiddleware } from './middleware/requestLoggingMiddleware.js';
 import { logEntry } from './config/cloudLoggingConfig.js';
-import frontendErrorRoute from './errors/frontendErrors.js';
+import frontendErrorRoute from './errors/clientErrorLogger.js';
 import authRoutes from './modules/auth/authRoutes.js';
 import bookRoutes from './modules/books/bookRoutes.js';
 import userRoutes from './modules/users/userRoutes.js';

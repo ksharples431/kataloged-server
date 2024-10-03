@@ -2,16 +2,15 @@ import {
   HttpStatusCodes,
   ErrorCodes,
   ErrorCategories,
-} from './errorConstraints.js';
+} from './errorMappings.js';
 
 function filterStack(stack) {
   return stack
     .split('\n')
-    .filter((line) => {
-      return (
+    .filter(
+      (line) =>
         !line.includes('node_modules') && !line.includes('(internal)')
-      );
-    })
+    )
     .join('\n');
 }
 
@@ -21,9 +20,8 @@ export class CustomError extends Error {
     this.name = this.constructor.name;
     this.statusCode =
       options.statusCode || HttpStatusCodes.INTERNAL_SERVER_ERROR;
-    this.errorCode = options.errorCode || ErrorCodes.UNEXPECTED_ERROR;
-    this.category =
-      options.category || ErrorCategories.SERVER_ERROR.UNKNOWN;
+    this.errorCode = options.errorCode || ErrorCodes.UNKNOWN_ERROR;
+    this.category = options.category || ErrorCategories.SERVER_ERROR;
     this.details = options.details || null;
     this.requestId = options.requestId || null;
     this.originalError = options.originalError || null;
@@ -40,12 +38,11 @@ export class CustomError extends Error {
 export const createCustomError = (
   message,
   statusCode = HttpStatusCodes.INTERNAL_SERVER_ERROR,
-  errorCode = ErrorCodes.UNEXPECTED_ERROR,
+  errorCode = ErrorCodes.UNKNOWN_ERROR,
   details = null,
   options = {}
 ) => {
-  const category =
-    options.category || ErrorCategories.SERVER_ERROR.UNKNOWN;
+  const category = options.category || ErrorCategories.SERVER_ERROR;
   let stack =
     options.stack ||
     (options.originalError && options.originalError.stack);
@@ -72,6 +69,6 @@ export const createUnknownError = (error, req = {}) => {
     HttpStatusCodes.INTERNAL_SERVER_ERROR,
     ErrorCodes.UNKNOWN_ERROR,
     { originalError: error, requestId: req.id },
-    { stack: error?.stack, category: ErrorCategories.SERVER_ERROR.UNKNOWN }
+    { stack: error?.stack, category: ErrorCategories.SERVER_ERROR }
   );
 };

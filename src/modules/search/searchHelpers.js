@@ -5,7 +5,7 @@ import {
   ErrorCodes,
   HttpStatusCodes,
   ErrorCategories,
-} from '../../errors/errorConstraints.js';
+} from '../../errors/errorMappings.js';
 import { generateId, findISBN13 } from '../../utils/globalHelpers.js';
 
 const bookCollection = db.collection('books');

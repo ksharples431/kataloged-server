@@ -1,12 +1,12 @@
 import NodeCache from 'node-cache';
 import { adminAuth } from '../config/firebaseConfig.js';
 import { createCustomError } from '../errors/customError.js';
-import { mapFirebaseAuthErrorToCustomError } from '../errors/errorMapper.js';
 import {
   ErrorCodes,
   HttpStatusCodes,
   ErrorCategories,
-} from '../errors/errorConstraints.js';
+  mapFirebaseAuthErrorToCustomError,
+} from '../errors/errorMappings.js';
 
 // Set TTL to 1 hour (3600 seconds) and check for expired entries every 10 minutes
 export const tokenCache = new NodeCache({

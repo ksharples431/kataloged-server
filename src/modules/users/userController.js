@@ -3,7 +3,7 @@ import {
   ErrorCodes,
   HttpStatusCodes,
   ErrorCategories,
-} from '../../errors/errorConstraints.js';
+} from '../../errors/errorMappings.js';
 import db from '../../config/firebaseConfig.js';
 import firebase from 'firebase-admin';
 

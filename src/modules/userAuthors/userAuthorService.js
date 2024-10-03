@@ -4,7 +4,7 @@ import {
   ErrorCodes,
   HttpStatusCodes,
   ErrorCategories,
-} from '../../errors/errorConstraints.js';
+} from '../../errors/errorMappings.js';
 import { generateId, executeQuery } from '../../utils/globalHelpers.js';
 import { combineBooksData } from '../userBooks/userBookService.js';
 

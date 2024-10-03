@@ -6,7 +6,7 @@ import {
   ErrorCodes,
   HttpStatusCodes,
   ErrorCategories,
-} from '../errors/errorConstraints.js';
+} from '../errors/errorMappings.js';
 
 // Validation Helpers
 export const validateInput = (data, schema) => {

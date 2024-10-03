@@ -1,9 +1,18 @@
 import { logEntry, loggingConfig } from '../config/cloudLoggingConfig.js';
-import { ErrorCategories, getErrorCategory } from './errorConstraints.js';
+import { ErrorCategories, HttpStatusCodes } from './errorMappings.js';
 
 const errorLogs = new Map();
 const ERROR_LOG_LIMIT = 10;
 const ERROR_LOG_WINDOW = 60000; // 1 minute
+
+const getCategoryFromStatusCode = (statusCode) => {
+  if (statusCode >= 400 && statusCode < 500) {
+    return ErrorCategories.CLIENT_ERROR;
+  } else if (statusCode >= 500) {
+    return ErrorCategories.SERVER_ERROR;
+  }
+  return ErrorCategories.SERVER_ERROR; // Default to server error for any other status codes
+};
 
 export const shouldLogError = (errorKey) => {
   const now = Date.now();
@@ -24,22 +33,10 @@ export const shouldLogError = (errorKey) => {
 
 export const getSeverity = (category) => {
   switch (category) {
-    case ErrorCategories.SERVER_ERROR.INTERNAL:
-    case ErrorCategories.SERVER_ERROR.DATABASE:
+    case ErrorCategories.SERVER_ERROR:
       return 'CRITICAL';
-    case ErrorCategories.SERVER_ERROR.SERVICE_UNAVAILABLE:
-    case ErrorCategories.SERVER_ERROR.EXTERNAL_API:
-    case ErrorCategories.SERVER_ERROR.UNKNOWN:
-      return 'ERROR';
-    case ErrorCategories.CLIENT_ERROR.AUTHENTICATION:
-    case ErrorCategories.CLIENT_ERROR.AUTHORIZATION:
+    case ErrorCategories.CLIENT_ERROR:
       return 'WARNING';
-    case ErrorCategories.CLIENT_ERROR.VALIDATION:
-    case ErrorCategories.CLIENT_ERROR.NOT_FOUND:
-    case ErrorCategories.CLIENT_ERROR.CONFLICT:
-    case ErrorCategories.CLIENT_ERROR.RATE_LIMIT:
-    case ErrorCategories.CLIENT_ERROR.BAD_REQUEST:
-      return 'NOTICE';
     default:
       return 'INFO';
   }
@@ -49,14 +46,15 @@ export const logError = (error, req) => {
   const errorKey = `${error.statusCode}:${error.message}`;
 
   if (shouldLogError(errorKey)) {
-    const category = error.category || getErrorCategory(error.statusCode);
+    const category =
+      error.category || getCategoryFromStatusCode(error.statusCode);
     const severity = getSeverity(category);
 
     if (
       loggingConfig.errorOnly &&
       !loggingConfig.logLevels.includes(severity)
     ) {
-      return; // Skip non-error logs in error-only mode
+      return;
     }
 
     const logMessage = {
@@ -74,7 +72,6 @@ export const logError = (error, req) => {
       environment: process.env.NODE_ENV,
     };
 
-    // Always include original error if it exists, and filter its stack as well
     if (error.originalError && error.originalError.stack) {
       logMessage.originalError = {
         message: error.originalError.message,
@@ -82,37 +79,17 @@ export const logError = (error, req) => {
       };
     }
 
-    // Add additional details based on error category (as in previous examples)
-    switch (category) {
-      case ErrorCategories.SERVER_ERROR.DATABASE:
-        logMessage.databaseDetails = {
-          operation: error.operation,
-          collection: error.collection,
-        };
-        break;
-      case ErrorCategories.SERVER_ERROR.EXTERNAL_API:
-        logMessage.apiDetails = {
-          apiName: error.apiName,
-          endpoint: error.endpoint,
-        };
-        break;
-      case ErrorCategories.CLIENT_ERROR.VALIDATION:
-        logMessage.validationErrors = error.details;
-        break;
-      case ErrorCategories.CLIENT_ERROR.RATE_LIMIT:
-        logMessage.rateLimitDetails = {
-          limit: error.limit,
-          current: error.current,
-        };
-        break;
+    if (category === ErrorCategories.SERVER_ERROR) {
+      if (error.operation) logMessage.databaseOperation = error.operation;
+      if (error.apiName) logMessage.apiName = error.apiName;
+    } else if (category === ErrorCategories.CLIENT_ERROR) {
+      if (error.details) logMessage.validationErrors = error.details;
     }
 
-    // Log request body only in non-production environments
     if (process.env.NODE_ENV !== 'production') {
       logMessage.requestBody = req.body;
     }
 
-    // Log the error
     logEntry(logMessage).catch(console.error);
 
     if (severity === 'CRITICAL') {

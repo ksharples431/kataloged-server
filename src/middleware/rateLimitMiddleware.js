@@ -3,7 +3,7 @@ import {
   ErrorCodes,
   HttpStatusCodes,
   ErrorCategories,
-} from '../errors/errorConstraints.js';
+} from '../errors/errorMappings.js';
 import { createCustomError } from '../errors/customError.js';
 import config from '../config/config.js';
 
@@ -11,7 +11,7 @@ const isProd = config.server.env === 'production';
 
 export const apiLimiter = rateLimit({
   windowMs: config.rateLimit.windowMs,
-  max: isProd ? config.rateLimit.max : config.rateLimit.max * 10, // More lenient in development
+  max: isProd ? config.rateLimit.max : config.rateLimit.max * 10,
   standardHeaders: true,
   legacyHeaders: false,
   message: 'Too many requests, please try again later.',
@@ -27,7 +27,7 @@ export const apiLimiter = rateLimit({
           requestId: req.id,
         },
         {
-          category: ErrorCategories.CLIENT_ERROR.RATE_LIMIT,
+          category: ErrorCategories.CLIENT_ERROR, 
         }
       )
     );
@@ -36,7 +36,7 @@ export const apiLimiter = rateLimit({
 
 export const authLimiter = rateLimit({
   windowMs: config.rateLimit.auth.windowMs,
-  max: isProd ? config.rateLimit.auth.max : config.rateLimit.auth.max * 40, // More lenient in development
+  max: isProd ? config.rateLimit.auth.max : config.rateLimit.auth.max * 40,
   message: 'Too many login attempts, please try again after an hour.',
   handler: (req, res, next, options) => {
     next(
@@ -52,7 +52,7 @@ export const authLimiter = rateLimit({
           requestId: req.id,
         },
         {
-          category: ErrorCategories.CLIENT_ERROR.RATE_LIMIT,
+          category: ErrorCategories.CLIENT_ERROR,
         }
       )
     );

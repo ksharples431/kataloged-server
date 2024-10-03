@@ -3,7 +3,7 @@ import {
   ErrorCodes,
   HttpStatusCodes,
   ErrorCategories,
-} from './errorConstraints.js';
+} from './errorMappings.js';
 
 export const handleJoiValidationError = (err, req = {}) => {
   let details;
@@ -44,4 +44,3 @@ export const handleJoiValidationError = (err, req = {}) => {
     }
   );
 };
-

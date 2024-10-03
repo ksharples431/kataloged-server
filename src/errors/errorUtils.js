@@ -3,7 +3,7 @@ import {
   HttpStatusCodes,
   ErrorCodes,
   ErrorCategories,
-} from './errorConstraints.js';
+} from './errorMappings.js';
 
 export const wrapError = (error, options = {}) => {
   if (error.name === 'CustomError') return error;
@@ -13,16 +13,14 @@ export const wrapError = (error, options = {}) => {
     options.statusCode ||
       error.statusCode ||
       HttpStatusCodes.INTERNAL_SERVER_ERROR,
-    options.errorCode || error.errorCode || ErrorCodes.UNEXPECTED_ERROR,
+    options.errorCode || error.errorCode || ErrorCodes.UNKNOWN_ERROR,
     {
       originalError: error,
       details: options.details || error.details || null,
     },
     {
       category:
-        options.category ||
-        error.category ||
-        ErrorCategories.SERVER_ERROR.UNKNOWN,
+        options.category || error.category || ErrorCategories.SERVER_ERROR,
       requestId: options.requestId || error.requestId,
       stack: error.stack,
     }
@@ -62,7 +60,6 @@ export const handleAsyncErrorMiddleware =
     }
   };
 
-// Not Found handler for unrecognized routes
 export const notFound = (req, res, next) => {
   next(
     createCustomError(
@@ -71,7 +68,7 @@ export const notFound = (req, res, next) => {
       ErrorCodes.RESOURCE_NOT_FOUND,
       { requestId: req.id },
       {
-        category: ErrorCategories.CLIENT_ERROR.NOT_FOUND,
+        category: ErrorCategories.CLIENT_ERROR,
         stack: null, // Optional, since stack isn't necessary for a 404
       }
     )

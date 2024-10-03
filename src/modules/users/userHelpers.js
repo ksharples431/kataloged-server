@@ -4,7 +4,7 @@ import {
   ErrorCodes,
   HttpStatusCodes,
   ErrorCategories,
-} from '../../errors/errorConstraints.js';
+} from '../../errors/errorMappings.js';
 
 const userCollection = db.collection('users');
 

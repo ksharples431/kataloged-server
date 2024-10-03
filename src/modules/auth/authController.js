@@ -6,7 +6,7 @@ import {
   ErrorCodes,
   HttpStatusCodes,
   ErrorCategories,
-} from '../../errors/errorConstraints.js';
+} from '../../errors/errorMappings.js';
 import db from '../../config/firebaseConfig.js';
 import { tokenCache } from '../../middleware/tokenMiddleware.js';
 

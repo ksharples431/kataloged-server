@@ -3,7 +3,7 @@ import {
   ErrorCodes,
   HttpStatusCodes,
   ErrorCategories,
-} from '../../errors/errorConstraints.js';
+} from '../../errors/errorMappings.js';
 
 export const formatBookDetailsResponse = (book, requestId) => {
   if (!book || typeof book !== 'object') {

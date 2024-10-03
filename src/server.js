@@ -5,7 +5,7 @@ import {
   ErrorCategories,
   HttpStatusCodes,
   ErrorCodes,
-} from './errors/errorConstraints.js';
+} from './errors/errorMappings.js';
 import { wrapError } from './errors/errorUtils.js';
 
 const PORT = process.env.PORT || 8080;

@@ -1,10 +1,5 @@
 import db from '../../config/firebaseConfig.js';
-import { createCustomError } from '../../errors/customError.js';
-import {
-  ErrorCodes,
-  HttpStatusCodes,
-  ErrorCategories,
-} from '../../errors/errorConstraints.js';
+import { HttpStatusCodes } from '../../errors/errorCategories.js';
 import {
   generateLowercaseFields,
   executeQuery,
@@ -19,25 +14,19 @@ export const fetchBookById = async (bid, requestId) => {
     const [book] = await executeQuery(query);
 
     if (!book) {
-      throw createCustomError(
-        'Book not found',
-        HttpStatusCodes.NOT_FOUND,
-        ErrorCodes.RESOURCE_NOT_FOUND,
-        { bid, requestId },
-        { category: ErrorCategories.CLIENT_ERROR.NOT_FOUND }
-      );
+      const error = new Error('Book not found');
+      error.statusCode = HttpStatusCodes.NOT_FOUND;
+      error.requestId = requestId;
+      throw error;
     }
 
     return book;
   } catch (error) {
-    if (error.name === 'CustomError') throw error;
-    throw createCustomError(
-      'Error fetching book',
-      HttpStatusCodes.INTERNAL_SERVER_ERROR,
-      ErrorCodes.DATABASE_ERROR,
-      { bid, error: error.message, requestId },
-      { category: ErrorCategories.SERVER_ERROR.DATABASE }
-    );
+    error.message = 'Error fetching book: ' + error.message;
+    error.statusCode =
+      error.statusCode || HttpStatusCodes.INTERNAL_SERVER_ERROR;
+    error.requestId = requestId;
+    throw error;
   }
 };
 
@@ -46,13 +35,10 @@ export const fetchAllBooks = async (requestId) => {
     const query = bookCollection;
     return await executeQuery(query);
   } catch (error) {
-    throw createCustomError(
-      'Error fetching all books',
-      HttpStatusCodes.INTERNAL_SERVER_ERROR,
-      ErrorCodes.DATABASE_ERROR,
-      { error: error.message, requestId },
-      { category: ErrorCategories.SERVER_ERROR.DATABASE }
-    );
+    error.message = 'Error fetching all books: ' + error.message;
+    error.statusCode = HttpStatusCodes.INTERNAL_SERVER_ERROR;
+    error.requestId = requestId;
+    throw error;
   }
 };
 
@@ -66,13 +52,10 @@ export const createBookHelper = async (
       const existingBooks = await executeQuery(query);
 
       if (existingBooks.length > 0) {
-        throw createCustomError(
-          'A book with this ISBN already exists',
-          HttpStatusCodes.CONFLICT,
-          ErrorCodes.RESOURCE_ALREADY_EXISTS,
-          { isbn, requestId },
-          { category: ErrorCategories.CLIENT_ERROR.CONFLICT }
-        );
+        const error = new Error('A book with this ISBN already exists');
+        error.statusCode = HttpStatusCodes.CONFLICT;
+        error.requestId = requestId;
+        throw error;
       }
     }
 
@@ -91,14 +74,10 @@ export const createBookHelper = async (
     await docRef.update({ bid });
     return await fetchBookById(bid);
   } catch (error) {
-    if (error.name === 'CustomError') throw error;
-    throw createCustomError(
-      'Error creating book',
-      HttpStatusCodes.INTERNAL_SERVER_ERROR,
-      ErrorCodes.DATABASE_ERROR,
-      { title, author, isbn, error: error.message, requestId },
-      { category: ErrorCategories.SERVER_ERROR.DATABASE }
-    );
+    error.message = 'Error creating book: ' + error.message;
+    error.statusCode = HttpStatusCodes.INTERNAL_SERVER_ERROR;
+    error.requestId = requestId;
+    throw error;
   }
 };
 
@@ -108,13 +87,10 @@ export const updateBookHelper = async (bid, updateData, requestId) => {
     const [book] = await executeQuery(query);
 
     if (!book) {
-      throw createCustomError(
-        'Book not found',
-        HttpStatusCodes.NOT_FOUND,
-        ErrorCodes.RESOURCE_NOT_FOUND,
-        { bid, requestId },
-        { category: ErrorCategories.CLIENT_ERROR.NOT_FOUND }
-      );
+      const error = new Error('Book not found');
+      error.statusCode = HttpStatusCodes.NOT_FOUND;
+      error.requestId = requestId;
+      throw error;
     }
 
     const mergedData = {
@@ -132,14 +108,10 @@ export const updateBookHelper = async (bid, updateData, requestId) => {
     await bookCollection.doc(bid).update(updatedBook);
     return await fetchBookById(bid);
   } catch (error) {
-    if (error.name === 'CustomError') throw error;
-    throw createCustomError(
-      'Error updating book',
-      HttpStatusCodes.INTERNAL_SERVER_ERROR,
-      ErrorCodes.DATABASE_ERROR,
-      { bid, updateData, error: error.message, requestId },
-      { category: ErrorCategories.SERVER_ERROR.DATABASE }
-    );
+    error.message = 'Error updating book: ' + error.message;
+    error.statusCode = HttpStatusCodes.INTERNAL_SERVER_ERROR;
+    error.requestId = requestId;
+    throw error;
   }
 };
 
@@ -149,13 +121,10 @@ export const deleteBookHelper = async (bid, requestId) => {
     const [book] = await executeQuery(query);
 
     if (!book) {
-      throw createCustomError(
-        'Book not found',
-        HttpStatusCodes.NOT_FOUND,
-        ErrorCodes.RESOURCE_NOT_FOUND,
-        { bid, requestId },
-        { category: ErrorCategories.CLIENT_ERROR.NOT_FOUND }
-      );
+      const error = new Error('Book not found');
+      error.statusCode = HttpStatusCodes.NOT_FOUND;
+      error.requestId = requestId;
+      throw error;
     }
 
     const batch = bookCollection.firestore.batch();
@@ -170,14 +139,10 @@ export const deleteBookHelper = async (bid, requestId) => {
 
     await batch.commit();
   } catch (error) {
-    if (error.name === 'CustomError') throw error;
-    throw createCustomError(
-      'Error deleting book',
-      HttpStatusCodes.INTERNAL_SERVER_ERROR,
-      ErrorCodes.DATABASE_ERROR,
-      { bid, error: error.message, requestId },
-      { category: ErrorCategories.SERVER_ERROR.DATABASE }
-    );
+    error.message = 'Error deleting book: ' + error.message;
+    error.statusCode = HttpStatusCodes.INTERNAL_SERVER_ERROR;
+    error.requestId = requestId;
+    throw error;
   }
 };
 
@@ -187,12 +152,9 @@ export const checkBookExistsHelper = async (bid, requestId) => {
     const [book] = await executeQuery(query);
     return book || null;
   } catch (error) {
-    throw createCustomError(
-      'Error checking book existence',
-      HttpStatusCodes.INTERNAL_SERVER_ERROR,
-      ErrorCodes.DATABASE_ERROR,
-      { bid, error: error.message, requestId },
-      { category: ErrorCategories.SERVER_ERROR.DATABASE }
-    );
+    error.message = 'Error checking book existence: ' + error.message;
+    error.statusCode = HttpStatusCodes.INTERNAL_SERVER_ERROR;
+    error.requestId = requestId;
+    throw error;
   }
 };

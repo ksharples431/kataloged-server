@@ -1,10 +1,5 @@
 import db from '../../config/firebaseConfig.js';
-import { createCustomError } from '../../errors/customError.js';
-import {
-  ErrorCodes,
-  HttpStatusCodes,
-  ErrorCategories,
-} from '../../errors/errorConstraints.js';
+import { HttpStatusCodes } from '../../errors/errorCategories.js';
 import { generateId, executeQuery } from '../../utils/globalHelpers.js';
 import { combineBooksData } from '../userBooks/userBookService.js';
 
@@ -39,14 +34,10 @@ export const fetchAllUserAuthors = async (uid, requestId) => {
 
     return Array.from(authorMap.values());
   } catch (error) {
-    if (error.name === 'CustomError') throw error;
-    throw createCustomError(
-      'Failed to map user authors from books',
-      HttpStatusCodes.INTERNAL_SERVER_ERROR,
-      ErrorCodes.DATABASE_ERROR,
-      { uid, error: error.message, requestId },
-      { category: ErrorCategories.SERVER_ERROR.DATABASE }
-    );
+    const dbError = new Error('Failed to map user authors from books');
+    dbError.statusCode = HttpStatusCodes.INTERNAL_SERVER_ERROR;
+    dbError.details = { uid, error: error.message, requestId };
+    throw dbError;
   }
 };
 
@@ -56,13 +47,10 @@ export const fetchUserAuthorBooks = async (uid, author, requestId) => {
     const userBooks = await executeQuery(query, requestId);
 
     if (userBooks.length === 0) {
-      throw createCustomError(
-        'No books found for this user',
-        HttpStatusCodes.NOT_FOUND,
-        ErrorCodes.RESOURCE_NOT_FOUND,
-        { uid, requestId },
-        { category: ErrorCategories.CLIENT_ERROR.NOT_FOUND }
-      );
+      const error = new Error('No books found for this user');
+      error.statusCode = HttpStatusCodes.NOT_FOUND;
+      error.details = { uid, requestId };
+      throw error;
     }
 
     const combinedBooks = await combineBooksData(userBooks, requestId);
@@ -71,24 +59,17 @@ export const fetchUserAuthorBooks = async (uid, author, requestId) => {
     );
 
     if (authorBooks.length === 0) {
-      throw createCustomError(
-        'No books found for this author',
-        HttpStatusCodes.NOT_FOUND,
-        ErrorCodes.RESOURCE_NOT_FOUND,
-        { uid, author, requestId },
-        { category: ErrorCategories.CLIENT_ERROR.NOT_FOUND }
-      );
+      const error = new Error('No books found for this author');
+      error.statusCode = HttpStatusCodes.NOT_FOUND;
+      error.details = { uid, author, requestId };
+      throw error;
     }
 
     return authorBooks;
   } catch (error) {
-    if (error.name === 'CustomError') throw error;
-    throw createCustomError(
-      'Failed to map books for user and author',
-      HttpStatusCodes.INTERNAL_SERVER_ERROR,
-      ErrorCodes.DATABASE_ERROR,
-      { uid, author, error: error.message, requestId },
-      { category: ErrorCategories.SERVER_ERROR.DATABASE }
-    );
+    const dbError = new Error('Failed to map books for user and author');
+    dbError.statusCode = HttpStatusCodes.INTERNAL_SERVER_ERROR;
+    dbError.details = { uid, author, error: error.message, requestId };
+    throw dbError;
   }
 };

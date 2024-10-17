@@ -1,12 +1,7 @@
 import { validateInput } from './authHelpers.js';
 import { googleSignInSchema } from './authModel.js';
 import { adminAuth } from '../../config/firebaseConfig.js';
-import { createCustomError } from '../../errors/customError.js';
-import {
-  ErrorCodes,
-  HttpStatusCodes,
-  ErrorCategories,
-} from '../../errors/errorConstraints.js';
+import { HttpStatusCodes } from '../../errors/errorCategories.js';
 import db from '../../config/firebaseConfig.js';
 import { tokenCache } from '../../middleware/tokenMiddleware.js';
 
@@ -20,13 +15,9 @@ export const googleSignIn = async (req, res, next) => {
     const { idToken } = req.body;
 
     if (!idToken) {
-      throw createCustomError(
-        'ID token is missing',
-        HttpStatusCodes.BAD_REQUEST,
-        ErrorCodes.INVALID_INPUT,
-        { requestId: req.id },
-        { category: ErrorCategories.CLIENT_ERROR.VALIDATION }
-      );
+      const error = new Error('ID token is missing');
+      error.statusCode = HttpStatusCodes.BAD_REQUEST;
+      return next(error);
     }
 
     // Verify the ID token with Firebase Admin SDK
@@ -51,23 +42,17 @@ export const googleSignIn = async (req, res, next) => {
       user = await userCollection.doc(uid).get();
 
       if (!user.exists) {
-        throw createCustomError(
-          'Failed to create user',
-          HttpStatusCodes.INTERNAL_SERVER_ERROR,
-          ErrorCodes.DATABASE_ERROR,
-          { uid, email: verifiedEmail },
-          { category: ErrorCategories.SERVER_ERROR.DATABASE }
-        );
+        const error = new Error('Failed to create user');
+        error.statusCode = HttpStatusCodes.INTERNAL_SERVER_ERROR;
+        return next(error);
       }
     }
 
-    // Prepare user data
     const userData = {
       uid: user.id,
       ...user.data(),
     };
 
-    // Respond with appropriate message
     res.status(200).json({
       message: isNewUser
         ? 'User created successfully'
@@ -79,105 +64,79 @@ export const googleSignIn = async (req, res, next) => {
   }
 };
 
-export const signup = async (req, res) => {
-  validateInput(req.body, signupSchema);
-
-  const { username, email } = req.body;
-  const { uid } = req.user;
-
-  if (!uid) {
-    throw createCustomError(
-      'No user id provided, authentication failed',
-      HttpStatusCodes.UNAUTHORIZED,
-      ErrorCodes.INVALID_CREDENTIALS,
-      { requestId: req.id },
-      { category: ErrorCategories.CLIENT_ERROR.AUTHENTICATION }
-    );
-  }
-
-  let user;
+export const signup = async (req, res, next) => {
   try {
-    user = await handleUserCreationOrFetch(uid, { username, email });
-  } catch (error) {
-    if (error.statusCode === HttpStatusCodes.NOT_FOUND) {
-      throw createCustomError(
-        'User with this UID already exists',
-        HttpStatusCodes.CONFLICT,
-        ErrorCodes.RESOURCE_ALREADY_EXISTS,
-        { userId: uid, requestId: req.id },
-        { category: ErrorCategories.CLIENT_ERROR.CONFLICT }
+    validateInput(req.body, signupSchema);
+    const { username, email } = req.body;
+    const { uid } = req.user;
+
+    if (!uid) {
+      const error = new Error(
+        'No user id provided, authentication failed'
       );
+      error.statusCode = HttpStatusCodes.UNAUTHORIZED;
+      return next(error);
     }
-    throw error;
-  }
 
-  res.status(201).json({
-    message: 'User created successfully',
-    user,
-  });
+    const user = await handleUserCreationOrFetch(uid, { username, email });
+
+    res.status(201).json({
+      message: 'User created successfully',
+      user,
+    });
+  } catch (error) {
+    next(error);
+  }
 };
 
-export const login = async (req, res) => {
-  const { uid } = req.user;
-
-  if (!uid) {
-    throw createCustomError(
-      'No user id provided, authentication failed',
-      HttpStatusCodes.UNAUTHORIZED,
-      ErrorCodes.INVALID_CREDENTIALS,
-      { requestId: req.id },
-      { category: ErrorCategories.CLIENT_ERROR.AUTHENTICATION }
-    );
-  }
-
-  const user = await fetchUserById(uid);
-
-  res.status(200).json({
-    message: 'User logged in successfully',
-    user,
-  });
-};
-
-export const logout = async (req, res) => {
-  const idToken = req.headers.authorization?.split('Bearer ')[1];
-
-  if (!idToken) {
-    throw createCustomError(
-      'Invalid authorization header format',
-      HttpStatusCodes.UNAUTHORIZED,
-      ErrorCodes.INVALID_CREDENTIALS,
-      { requestId: req.id },
-      { category: ErrorCategories.CLIENT_ERROR.AUTHENTICATION }
-    );
-  }
-
-  tokenCache.del(idToken);
-
-  const { uid } = req.user;
-
-  if (!uid) {
-    throw createCustomError(
-      'No user id provided, authentication failed',
-      HttpStatusCodes.UNAUTHORIZED,
-      ErrorCodes.INVALID_CREDENTIALS,
-      { requestId: req.id },
-      { category: ErrorCategories.CLIENT_ERROR.AUTHENTICATION }
-    );
-  }
-
+export const login = async (req, res, next) => {
   try {
+    const { uid } = req.user;
+
+    if (!uid) {
+      const error = new Error(
+        'No user id provided, authentication failed'
+      );
+      error.statusCode = HttpStatusCodes.UNAUTHORIZED;
+      return next(error);
+    }
+
+    const user = await fetchUserById(uid);
+
+    res.status(200).json({
+      message: 'User logged in successfully',
+      user,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const logout = async (req, res, next) => {
+  try {
+    const idToken = req.headers.authorization?.split('Bearer ')[1];
+
+    if (!idToken) {
+      const error = new Error('Invalid authorization header format');
+      error.statusCode = HttpStatusCodes.UNAUTHORIZED;
+      return next(error);
+    }
+
+    tokenCache.del(idToken);
+
+    const { uid } = req.user;
+
+    if (!uid) {
+      const error = new Error(
+        'No user id provided, authentication failed'
+      );
+      error.statusCode = HttpStatusCodes.UNAUTHORIZED;
+      return next(error);
+    }
+
     await adminAuth.revokeRefreshTokens(uid);
     res.status(200).json({ message: 'User logged out successfully' });
   } catch (error) {
-    throw createCustomError(
-      'Failed to revoke refresh tokens',
-      HttpStatusCodes.INTERNAL_SERVER_ERROR,
-      ErrorCodes.UNEXPECTED_ERROR,
-      { requestId: req.id, uid },
-      {
-        category: ErrorCategories.SERVER_ERROR.INTERNAL,
-        originalError: error,
-      }
-    );
+    next(error);
   }
 };

@@ -1,44 +1,42 @@
 import http from 'http';
 import app from './index.js';
 import { logEntry } from './config/cloudLoggingConfig.js';
-import {
-  ErrorCategories,
-  HttpStatusCodes,
-  ErrorCodes,
-} from './errors/errorConstraints.js';
-import { wrapError } from './errors/errorUtils.js';
 
 const PORT = process.env.PORT || 8080;
 
 const server = http.createServer(app);
 
 server.listen(PORT, () => {
-  console.log(`Server is listening for HTTP requests on port ${PORT}`);
+  console.log(`Server is listening on port ${PORT}`);
 });
 
-const handleGlobalError = async (error) => {
-  console.error('Unhandled error:', error);
-
-  const wrappedError = wrapError(error, {
-    statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-    errorCode: ErrorCodes.UNEXPECTED_ERROR,
-    category: ErrorCategories.SERVER_ERROR.INTERNAL,
-  });
+// Log uncaught exceptions and unhandled rejections
+process.on('uncaughtException', async (error) => {
+  console.error('Unhandled exception:', error);
 
   await logEntry({
-    message: wrappedError.message,
+    message: error.message,
     severity: 'CRITICAL',
-    statusCode: wrappedError.statusCode,
-    category: wrappedError.category,
-    errorCode: wrappedError.errorCode,
-    stack: wrappedError.stack,
+    stack: error.stack,
   });
 
   server.close(() => {
-    console.log('Server closed due to an unhandled error.');
+    console.log('Server shutting down due to an unhandled exception.');
     process.exit(1);
   });
-};
+});
 
-process.on('uncaughtException', handleGlobalError);
-process.on('unhandledRejection', (reason) => handleGlobalError(reason));
+process.on('unhandledRejection', async (reason) => {
+  console.error('Unhandled rejection:', reason);
+
+  await logEntry({
+    message: reason.message || reason,
+    severity: 'CRITICAL',
+    stack: reason.stack,
+  });
+
+  server.close(() => {
+    console.log('Server shutting down due to an unhandled rejection.');
+    process.exit(1);
+  });
+});

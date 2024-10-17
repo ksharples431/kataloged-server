@@ -1,8 +1,7 @@
 import express from 'express';
 import verifyToken from '../../middleware/tokenMiddleware.js';
 import { validateRequest } from '../../middleware/validationMiddleware.js';
-import { handleAsyncRoute } from '../../errors/errorUtils.js';
-import { apiLimiter } from '../../middleware/rateLimitMiddleware.js';
+import { apiLimiter } from '../../middleware/errorMiddleware.js';
 import {
   createUserBookSchema,
   updateUserBookSchema,
@@ -19,31 +18,23 @@ const router = express.Router();
 
 router.use('/userBooks', apiLimiter);
 
-router.get(
-  '/userBooks/:ubid',
-  verifyToken,
-  handleAsyncRoute(getUserBookById)
-);
-router.get('/userBooks', verifyToken, handleAsyncRoute(getUserBooks));
+router.get('/userBooks/:ubid', verifyToken, getUserBookById);
+router.get('/userBooks', verifyToken, getUserBooks);
 
 router.post(
   '/userBooks',
   verifyToken,
-  validateRequest(createUserBookSchema),
-  handleAsyncRoute(createUserBook)
+  validateRequest(createUserBookSchema, 'body'),
+  createUserBook
 );
 
 router.put(
   '/userBooks/:ubid',
   verifyToken,
-  validateRequest(updateUserBookSchema),
-  handleAsyncRoute(updateUserBook)
+  validateRequest(updateUserBookSchema, 'body'),
+  updateUserBook
 );
 
-router.delete(
-  '/userBooks/:ubid',
-  verifyToken,
-  handleAsyncRoute(deleteUserBook)
-);
+router.delete('/userBooks/:ubid', verifyToken, deleteUserBook);
 
 export default router;

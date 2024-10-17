@@ -1,19 +1,11 @@
-import { createCustomError } from '../../errors/customError.js';
-import {
-  ErrorCodes,
-  HttpStatusCodes,
-  ErrorCategories,
-} from '../../errors/errorConstraints.js';
+import { HttpStatusCodes } from '../../errors/errorCategories.js';
 
 export const formatUserBookDetailsResponse = (userBook, requestId) => {
   if (!userBook || typeof userBook !== 'object') {
-    throw createCustomError(
-      'Invalid user book object',
-      HttpStatusCodes.INTERNAL_SERVER_ERROR,
-      ErrorCodes.INVALID_INPUT,
-      { title: userBook?.title, requestId },
-      { category: ErrorCategories.SERVER_ERROR.INTERNAL }
-    );
+    const error = new Error('Invalid user book object');
+    error.statusCode = HttpStatusCodes.INTERNAL_SERVER_ERROR;
+    error.details = { title: userBook?.title, requestId };
+    throw error;
   }
   return {
     author: userBook.author,

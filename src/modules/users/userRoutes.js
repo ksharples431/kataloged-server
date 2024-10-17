@@ -6,23 +6,22 @@ import {
   deleteUser,
 } from './userController.js';
 import verifyToken from '../../middleware/tokenMiddleware.js';
-import { handleAsyncRoute } from '../../errors/errorUtils.js';
-import { apiLimiter } from '../../middleware/rateLimitMiddleware.js';
+import { apiLimiter } from '../../middleware/errorMiddleware.js';
 
 const router = express.Router();
 
 router.use('/users', apiLimiter);
 
 // Get all users
-router.get('/users', verifyToken, handleAsyncRoute(getAllUsers));
+router.get('/users', verifyToken, getAllUsers);
 
 // Get user by ID
-router.get('/users/:uid', verifyToken, handleAsyncRoute(getUserById));
+router.get('/users/:uid', verifyToken, getUserById);
 
 // Update user
-router.put('/users/:uid', verifyToken, handleAsyncRoute(updateUser));
+router.put('/users/:uid', verifyToken, updateUser);
 
 // Delete user
-router.delete('/users/:uid', verifyToken, handleAsyncRoute(deleteUser));
+router.delete('/users/:uid', verifyToken, deleteUser);
 
 export default router;

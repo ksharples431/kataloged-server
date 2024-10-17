@@ -1,9 +1,4 @@
-import { createCustomError } from '../../errors/customError.js';
-import {
-  ErrorCodes,
-  HttpStatusCodes,
-  ErrorCategories,
-} from '../../errors/errorConstraints.js';
+import { HttpStatusCodes } from '../../errors/errorCategories.js'; // Keep only HttpStatusCodes
 import {
   createBookSchema,
   updateBookSchema,
@@ -24,119 +19,136 @@ import {
   deleteBookHelper,
 } from './bookService.js';
 
-export const checkBookExists = async (req, res) => {
-  const { bid } = req.params;
+// ==============================
+// Controller Methods Refactored
+// ==============================
 
-  const book = await checkBookExistsHelper(bid, req.id);
+export const checkBookExists = async (req, res, next) => {
+  try {
+    const { bid } = req.params;
+    const book = await checkBookExistsHelper(bid, req.id);
 
-  res.status(200).json({
-    data: {
-      exists: !!book,
-      book: book,
-    },
-  });
-};
-
-export const getBookById = async (req, res) => {
-  const { bid } = req.params;
-
-  let book = await fetchBookById(bid, req.id);
-
-  if (!book) {
-    throw createCustomError(
-      'Book not found',
-      HttpStatusCodes.NOT_FOUND,
-      ErrorCodes.RESOURCE_NOT_FOUND,
-      { bookId: bid, requestId: req.id },
-      { category: ErrorCategories.CLIENT_ERROR.NOT_FOUND }
-    );
+    res.status(200).json({
+      data: {
+        exists: !!book,
+        book: book,
+      },
+    });
+  } catch (error) {
+    next(error); // Pass any errors to global error handler
   }
-
-  book = formatBookDetailsResponse(book, req.id);
-
-  res.status(200).json({
-    data: {
-      message: 'Book fetched successfully',
-      book,
-    },
-  });
 };
 
-export const getBooks = async (req, res) => {
-  validateInput(req.query, getBooksQuerySchema);
-  const { sortBy = 'title', order = 'asc' } = req.query;
+export const getBookById = async (req, res, next) => {
+  try {
+    const { bid } = req.params;
+    let book = await fetchBookById(bid, req.id);
 
-  let books = await fetchAllBooks(req.id);
-  const sortedBooks = sortBooks(books, sortBy, order);
-  books = sortedBooks.map((book) => formatBookCoverResponse(book, req.id));
+    if (!book) {
+      const error = new Error('Book not found');
+      error.statusCode = HttpStatusCodes.NOT_FOUND;
+      return next(error); // Pass the error to the global error handler
+    }
 
-  res.status(200).json({
-    data: {
-      message:
-        books.length > 0
-          ? 'Books fetched successfully'
-          : 'No books in the library',
-      books,
-    },
-  });
-};
+    book = formatBookDetailsResponse(book, req.id);
 
-export const createBook = async (req, res) => {
-  validateInput(req.body, createBookSchema);
-
-  let book = await createBookHelper(req.body, req.id);
-  book = formatBookCoverResponse(book, req.id);
-
-  res.status(201).json({
-    data: {
-      message: 'Book created successfully',
-      book,
-    },
-  });
-};
-
-export const updateBook = async (req, res) => {
-  validateInput(req.body, updateBookSchema);
-  const { bid } = req.params;
-  const updateData = req.body;
-
-  let updatedBook = await updateBookHelper(bid, updateData, req.id);
-  if (!updatedBook) {
-    throw createCustomError(
-      'Book not found',
-      HttpStatusCodes.NOT_FOUND,
-      ErrorCodes.RESOURCE_NOT_FOUND,
-      { bookId: bid, requestId: req.id },
-      { category: ErrorCategories.CLIENT_ERROR.NOT_FOUND }
-    );
+    res.status(200).json({
+      data: {
+        message: 'Book fetched successfully',
+        book,
+      },
+    });
+  } catch (error) {
+    next(error); // Pass any errors to global error handler
   }
-  updatedBook = formatBookCoverResponse(updatedBook, req.id);
-
-  res.status(200).json({
-    data: {
-      message: 'Book updated successfully',
-      book: updatedBook,
-    },
-  });
 };
 
-export const deleteBook = async (req, res) => {
-  const { bid } = req.params;
+export const getBooks = async (req, res, next) => {
+  try {
+    validateInput(req.query, getBooksQuerySchema);
+    const { sortBy = 'title', order = 'asc' } = req.query;
 
-  const deleted = await deleteBookHelper(bid, req.id);
-  if (!deleted) {
-    throw createCustomError(
-      'Book not found',
-      HttpStatusCodes.NOT_FOUND,
-      ErrorCodes.RESOURCE_NOT_FOUND,
-      { bookId: bid, requestId: req.id },
-      { category: ErrorCategories.CLIENT_ERROR.NOT_FOUND }
+    let books = await fetchAllBooks(req.id);
+    const sortedBooks = sortBooks(books, sortBy, order);
+    books = sortedBooks.map((book) =>
+      formatBookCoverResponse(book, req.id)
     );
-  }
 
-  res.status(200).json({
-    data: {
-      message: 'Book and related user books deleted successfully',
-    },
-  });
+    res.status(200).json({
+      data: {
+        message:
+          books.length > 0
+            ? 'Books fetched successfully'
+            : 'No books in the library',
+        books,
+      },
+    });
+  } catch (error) {
+    next(error); // Pass any errors to global error handler
+  }
+};
+
+export const createBook = async (req, res, next) => {
+  try {
+    validateInput(req.body, createBookSchema);
+
+    let book = await createBookHelper(req.body, req.id);
+    book = formatBookCoverResponse(book, req.id);
+
+    res.status(201).json({
+      data: {
+        message: 'Book created successfully',
+        book,
+      },
+    });
+  } catch (error) {
+    next(error); // Pass any errors to global error handler
+  }
+};
+
+export const updateBook = async (req, res, next) => {
+  try {
+    validateInput(req.body, updateBookSchema);
+    const { bid } = req.params;
+    const updateData = req.body;
+
+    let updatedBook = await updateBookHelper(bid, updateData, req.id);
+    if (!updatedBook) {
+      const error = new Error('Book not found');
+      error.statusCode = HttpStatusCodes.NOT_FOUND;
+      return next(error); // Pass the error to the global error handler
+    }
+
+    updatedBook = formatBookCoverResponse(updatedBook, req.id);
+
+    res.status(200).json({
+      data: {
+        message: 'Book updated successfully',
+        book: updatedBook,
+      },
+    });
+  } catch (error) {
+    next(error); // Pass any errors to global error handler
+  }
+};
+
+export const deleteBook = async (req, res, next) => {
+  try {
+    const { bid } = req.params;
+
+    const deleted = await deleteBookHelper(bid, req.id);
+    if (!deleted) {
+      const error = new Error('Book not found');
+      error.statusCode = HttpStatusCodes.NOT_FOUND;
+      return next(error); // Pass the error to the global error handler
+    }
+
+    res.status(200).json({
+      data: {
+        message: 'Book and related user books deleted successfully',
+      },
+    });
+  } catch (error) {
+    next(error); // Pass any errors to global error handler
+  }
 };

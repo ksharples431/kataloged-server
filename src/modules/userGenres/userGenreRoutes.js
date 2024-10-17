@@ -1,7 +1,6 @@
 import express from 'express';
 import verifyToken from '../../middleware/tokenMiddleware.js';
-import { handleAsyncRoute } from '../../errors/errorUtils.js';
-import { apiLimiter } from '../../middleware/rateLimitMiddleware.js';
+import { apiLimiter } from '../../middleware/errorMiddleware.js';
 import {
   getUserGenres,
   getUserGenreBooks,
@@ -14,12 +13,8 @@ router.use('/userBooks', apiLimiter);
 router.get(
   '/userBooks/:uid/genres/:genre/books',
   verifyToken,
-  handleAsyncRoute(getUserGenreBooks)
+  getUserGenreBooks
 );
-router.get(
-  '/userBooks/:uid/genres',
-  verifyToken,
-  handleAsyncRoute(getUserGenres)
-);
+router.get('/userBooks/:uid/genres', verifyToken, getUserGenres);
 
 export default router;

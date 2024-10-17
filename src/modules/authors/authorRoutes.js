@@ -1,13 +1,12 @@
 import express from 'express';
-import { handleAsyncRoute } from '../../errors/errorUtils.js';
-import { apiLimiter } from '../../middleware/rateLimitMiddleware.js';
+import { apiLimiter } from '../../middleware/errorMiddleware.js';
 import { getAuthors, getAuthorBooks } from './authorController.js';
 
 const router = express.Router();
 
 router.use('/authors', apiLimiter);
 
-router.get('/authors/:author/books', handleAsyncRoute(getAuthorBooks));
-router.get('/authors', handleAsyncRoute(getAuthors));
+router.get('/authors/:author/books', getAuthorBooks);
+router.get('/authors', getAuthors);
 
 export default router;

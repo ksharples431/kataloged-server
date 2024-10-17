@@ -1,24 +1,15 @@
 import hashSum from 'hash-sum';
-import { createCustomError } from '../errors/customError.js';
 import admin from 'firebase-admin';
-
-import {
-  ErrorCodes,
-  HttpStatusCodes,
-  ErrorCategories,
-} from '../errors/errorConstraints.js';
+import { HttpStatusCodes } from '../errors/errorCategories.js';
 
 // Validation Helpers
 export const validateInput = (data, schema) => {
   const { error } = schema.validate(data);
   if (error) {
-    throw createCustomError(
-      error.details[0].message,
-      HttpStatusCodes.BAD_REQUEST,
-      ErrorCodes.INVALID_INPUT,
-      { data },
-      { category: ErrorCategories.CLIENT_ERROR.VALIDATION }
-    );
+    const validationError = new Error(error.details[0].message);
+    validationError.statusCode = HttpStatusCodes.BAD_REQUEST;
+    validationError.details = { data };
+    throw validationError;
   }
 };
 
@@ -27,28 +18,24 @@ export const generateId = (input) => {
   let uniqueString;
 
   if (typeof input === 'string') {
-    // If input is a string (e.g., author name)
     uniqueString = `${input}-${Date.now()}`;
   } else if (typeof input === 'object' && input !== null) {
-    // If input is an object (e.g., book data)
     if (!input.id || !input.etag) {
-      throw createCustomError(
-        'Invalid object for ID generation: missing id or etag',
-        HttpStatusCodes.BAD_REQUEST,
-        ErrorCodes.INVALID_INPUT,
-        { input },
-        { category: ErrorCategories.CLIENT_ERROR.VALIDATION }
+      const error = new Error(
+        'Invalid object for ID generation: missing id or etag'
       );
+      error.statusCode = HttpStatusCodes.BAD_REQUEST;
+      error.details = { input };
+      throw error;
     }
     uniqueString = `${input.id}-${input.etag}-${Date.now()}`;
   } else {
-    throw createCustomError(
-      'Invalid input for ID generation: must be a string or an object',
-      HttpStatusCodes.BAD_REQUEST,
-      ErrorCodes.INVALID_INPUT,
-      { input },
-      { category: ErrorCategories.CLIENT_ERROR.VALIDATION }
+    const error = new Error(
+      'Invalid input for ID generation: must be a string or an object'
     );
+    error.statusCode = HttpStatusCodes.BAD_REQUEST;
+    error.details = { input };
+    throw error;
   }
 
   return hashSum(uniqueString).substring(0, 28);
@@ -63,13 +50,10 @@ export const findISBN13 = (industryIdentifiers) => {
 // Returns book card details
 export const formatBookCoverResponse = (book) => {
   if (!book || typeof book !== 'object') {
-    throw createCustomError(
-      'Invalid book object',
-      HttpStatusCodes.INTERNAL_SERVER_ERROR,
-      ErrorCodes.INVALID_INPUT,
-      { title: book?.title },
-      { category: ErrorCategories.SERVER_ERROR.INTERNAL }
-    );
+    const error = new Error('Invalid book object');
+    error.statusCode = HttpStatusCodes.INTERNAL_SERVER_ERROR;
+    error.details = { title: book?.title };
+    throw error;
   }
   return {
     author: book.author,
@@ -83,13 +67,10 @@ export const formatBookCoverResponse = (book) => {
 // Saves lowercase title and author for create and update books
 export const generateLowercaseFields = (book) => {
   if (!book || typeof book !== 'object') {
-    throw createCustomError(
-      'Invalid book object',
-      HttpStatusCodes.INTERNAL_SERVER_ERROR,
-      ErrorCodes.INVALID_INPUT,
-      { title: book?.title },
-      { category: ErrorCategories.SERVER_ERROR.INTERNAL }
-    );
+    const error = new Error('Invalid book object');
+    error.statusCode = HttpStatusCodes.INTERNAL_SERVER_ERROR;
+    error.details = { title: book?.title };
+    throw error;
   }
   return {
     ...book,
@@ -138,21 +119,16 @@ export const sortBooks = (items, sortBy, order) => {
         comparison = (a.bookCount || 0) - (b.bookCount || 0);
         break;
       default:
-        throw createCustomError(
-          'Invalid sort field',
-          HttpStatusCodes.BAD_REQUEST,
-          ErrorCodes.INVALID_INPUT,
-          { sortBy },
-          { category: ErrorCategories.CLIENT_ERROR.VALIDATION }
-        );
+        const error = new Error('Invalid sort field');
+        error.statusCode = HttpStatusCodes.BAD_REQUEST;
+        error.details = { sortBy };
+        throw error;
     }
 
     return order === 'asc' ? comparison : -comparison;
   };
 
-  const sortedItems = items.sort(compareFunction);
-
-  return sortedItems;
+  return items.sort(compareFunction);
 };
 
 // Database Helpers
@@ -160,13 +136,11 @@ export const executeQuery = async (queryOrDocRef) => {
   try {
     let result;
     if (queryOrDocRef instanceof admin.firestore.Query) {
-      // It's a query
       const snapshot = await queryOrDocRef.get();
       result = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
     } else if (
       queryOrDocRef instanceof admin.firestore.DocumentReference
     ) {
-      // It's a document reference
       const doc = await queryOrDocRef.get();
       result = doc.exists ? [{ id: doc.id, ...doc.data() }] : [];
     } else {
@@ -176,12 +150,9 @@ export const executeQuery = async (queryOrDocRef) => {
     }
     return result;
   } catch (error) {
-    throw createCustomError(
-      'Error executing database query',
-      HttpStatusCodes.INTERNAL_SERVER_ERROR,
-      ErrorCodes.DATABASE_ERROR,
-      { error: error.message },
-      { category: ErrorCategories.SERVER_ERROR.DATABASE }
-    );
+    const dbError = new Error('Error executing database query');
+    dbError.statusCode = HttpStatusCodes.INTERNAL_SERVER_ERROR;
+    dbError.details = { error: error.message };
+    throw dbError;
   }
 };

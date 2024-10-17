@@ -14,12 +14,6 @@ let firebaseAdminApp;
 let firebaseClientApp;
 let auth;
 
-// console.log('Config:', config);
-// console.log(
-//   'Google Application Credentials:',
-//   config.google.applicationCredentials
-// );
-
 // Initialize Firebase Admin SDK
 async function initializeFirebaseAdmin() {
   if (config.server.env === 'production') {
@@ -29,7 +23,6 @@ async function initializeFirebaseAdmin() {
   } else {
     try {
       const serviceAccountPath = config.google.applicationCredentials;
-
 
       if (!serviceAccountPath) {
         throw new Error('Service account path is undefined');
@@ -43,8 +36,11 @@ async function initializeFirebaseAdmin() {
         credential: admin.credential.cert(serviceAccount),
       });
     } catch (error) {
+      // Throw the error so it can be caught by the global error handler
       console.error('Error loading service account file:', error);
-      throw error;
+      throw new Error(
+        `Firebase Admin Initialization Error: ${error.message}`
+      );
     }
   }
 }

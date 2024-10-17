@@ -1,26 +1,27 @@
 import db from '../../config/firebaseConfig.js';
-import { createCustomError } from '../../errors/customError.js';
-import {
-  ErrorCodes,
-  HttpStatusCodes,
-  ErrorCategories,
-} from '../../errors/errorConstraints.js';
+import { HttpStatusCodes } from '../../errors/errorCategories.js';
 
 const userCollection = db.collection('users');
 
 export const fetchUserById = async (uid, requestId) => {
-  const userDoc = await userCollection.doc(uid).get();
-  if (!userDoc.exists) {
-    throw createCustomError(
-      'User not found',
-      HttpStatusCodes.NOT_FOUND,
-      ErrorCodes.RESOURCE_NOT_FOUND,
-      { uid, requestId },
-      { category: ErrorCategories.CLIENT_ERROR.NOT_FOUND }
+  try {
+    const userDoc = await userCollection.doc(uid).get();
+    if (!userDoc.exists) {
+      const error = new Error('User not found');
+      error.statusCode = HttpStatusCodes.NOT_FOUND;
+      error.details = { uid, requestId };
+      throw error;
+    }
+    return {
+      uid: userDoc.id,
+      ...userDoc.data(),
+    };
+  } catch (error) {
+    const dbError = new Error(
+      `Error fetching user by ID: ${error.message}`
     );
+    dbError.statusCode = HttpStatusCodes.INTERNAL_SERVER_ERROR;
+    dbError.details = { uid, requestId };
+    throw dbError;
   }
-  return {
-    uid: userDoc.id,
-    ...userDoc.data(),
-  };
 };

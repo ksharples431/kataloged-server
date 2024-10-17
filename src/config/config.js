@@ -5,7 +5,7 @@ dotenv.config();
 
 const envVarsSchema = Joi.object({
   GOOGLE_APPLICATION_CREDENTIALS: Joi.string().required(),
-  CLOUDSDK_AUTH_ACCESS_TOKEN: Joi.string().required(), // Changed to string
+  CLOUDSDK_AUTH_ACCESS_TOKEN: Joi.string().required(),
   PORT: Joi.number().default(8080),
   NODE_ENV: Joi.string()
     .valid('development', 'production', 'test')
@@ -23,14 +23,15 @@ const envVarsSchema = Joi.object({
   FB_MEASURMENT_ID: Joi.string().required(),
   OAUTH_CLIENT_ID: Joi.string().required(),
   RATE_LIMIT_MAX_REQUESTS: Joi.number().default(100),
-  RATE_LIMIT_WINDOW_MS: Joi.number().default(15 * 60 * 1000), // 15 minutes
+  RATE_LIMIT_WINDOW_MS: Joi.number().default(15 * 60 * 1000),
   AUTH_RATE_LIMIT_MAX_REQUESTS: Joi.number().default(5),
-  AUTH_RATE_LIMIT_WINDOW_MS: Joi.number().default(60 * 60 * 1000), // 1 hour
+  AUTH_RATE_LIMIT_WINDOW_MS: Joi.number().default(60 * 60 * 1000),
 }).unknown();
 
 const { error, value: envVars } = envVarsSchema.validate(process.env);
 
 if (error) {
+  // Throw an error to ensure it can be captured by the global error handler
   throw new Error(`Config validation error: ${error.message}`);
 }
 
@@ -70,6 +71,5 @@ const config = {
     },
   },
 };
-
 
 export default config;

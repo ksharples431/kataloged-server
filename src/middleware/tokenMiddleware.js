@@ -1,12 +1,6 @@
 import NodeCache from 'node-cache';
 import { adminAuth } from '../config/firebaseConfig.js';
-import { createCustomError } from '../errors/customError.js';
-import { mapFirebaseAuthErrorToCustomError } from '../errors/errorMapper.js';
-import {
-  ErrorCodes,
-  HttpStatusCodes,
-  ErrorCategories,
-} from '../errors/errorConstraints.js';
+import { HttpStatusCodes } from '../errors/errorCategories.js';
 
 // Set TTL to 1 hour (3600 seconds) and check for expired entries every 10 minutes
 export const tokenCache = new NodeCache({
@@ -19,40 +13,49 @@ const verifyToken = async (req, res, next) => {
     const authHeader = req.headers.authorization;
 
     if (!authHeader) {
-      throw createCustomError(
-        'No authorization header provided',
-        HttpStatusCodes.UNAUTHORIZED,
-        ErrorCodes.INVALID_CREDENTIALS,
-        { requestId: req.id },
-        { category: ErrorCategories.CLIENT_ERROR.AUTHENTICATION }
-      );
+      const error = new Error('No authorization header provided');
+      error.statusCode = HttpStatusCodes.UNAUTHORIZED;
+      return next(error); // Pass the error to the global handler
     }
 
     const idToken = authHeader.split('Bearer ')[1];
 
     if (!idToken) {
-      throw createCustomError(
-        'Invalid authorization header format',
-        HttpStatusCodes.UNAUTHORIZED,
-        ErrorCodes.INVALID_CREDENTIALS,
-        { requestId: req.id },
-        { category: ErrorCategories.CLIENT_ERROR.AUTHENTICATION }
-      );
+      const error = new Error('Invalid authorization header format');
+      error.statusCode = HttpStatusCodes.UNAUTHORIZED;
+      return next(error); // Pass the error to the global handler
     }
 
+    // Check for cached user
     const cachedUser = tokenCache.get(idToken);
     if (cachedUser) {
       req.user = cachedUser;
-      return next();
+      return next(); // Token is valid, proceed
     }
 
+    // Verify token with Firebase Admin SDK
     const decodedToken = await adminAuth.verifyIdToken(idToken, true);
     tokenCache.set(idToken, decodedToken);
 
     req.user = decodedToken;
-    next();
+    next(); // Token is valid, proceed
   } catch (error) {
-    next(mapFirebaseAuthErrorToCustomError(error, req));
+    // Handle Firebase authentication errors directly
+    let authError = new Error('Authentication error');
+    authError.statusCode = HttpStatusCodes.UNAUTHORIZED;
+
+    if (error.code === 'auth/id-token-expired') {
+      authError.message = 'ID token has expired';
+      authError.statusCode = HttpStatusCodes.UNAUTHORIZED;
+    } else if (error.code === 'auth/user-not-found') {
+      authError.message = 'User not found';
+      authError.statusCode = HttpStatusCodes.FORBIDDEN;
+    } else {
+      authError.message =
+        error.message || 'Firebase authentication failed';
+    }
+
+    next(authError); // Pass the error to the global handler
   }
 };
 

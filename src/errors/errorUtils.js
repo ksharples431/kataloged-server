@@ -1,88 +1,86 @@
-import { createCustomError } from './customError.js';
-import {
-  HttpStatusCodes,
-  ErrorCodes,
-  ErrorCategories,
-} from './errorConstraints.js';
+import { HttpStatusCodes } from './errorCategories';
 
-export const wrapError = (error, options = {}) => {
-  if (error.name === 'CustomError') return error;
+/* ==========================
+ * Error Stack and Sanitization Utilities
+ * ========================== */
 
-  return createCustomError(
-    error.message || 'An unknown error occurred',
-    options.statusCode ||
-      error.statusCode ||
-      HttpStatusCodes.INTERNAL_SERVER_ERROR,
-    options.errorCode || error.errorCode || ErrorCodes.UNEXPECTED_ERROR,
-    {
-      originalError: error,
-      details: options.details || error.details || null,
-    },
-    {
-      category:
-        options.category ||
-        error.category ||
-        ErrorCategories.SERVER_ERROR.UNKNOWN,
-      requestId: options.requestId || error.requestId,
-      stack: error.stack,
-    }
-  );
-};
-
-export const handleAsyncMiddleware =
-  (handler) => async (req, res, next) => {
-    try {
-      await handler(req, res, next);
-    } catch (error) {
-      next(wrapError(error, { requestId: req.id }));
-    }
-  };
-
-export const handleAsyncRoute = (controller) => async (req, res, next) => {
-  try {
-    await controller(req, res, next);
-  } catch (error) {
-    console.error('Async Route Error:', error);
-    if (res.headersSent) {
-      return next(error);
-    }
-    next(wrapError(error, { requestId: req.id }));
-  }
-};
-
-export const handleAsyncErrorMiddleware =
-  (errorHandler) => async (err, req, res, next) => {
-    try {
-      await errorHandler(err, req, res, next);
-    } catch (error) {
-      console.error('Error in error handler:', error);
-      if (!res.headersSent) {
-        res.status(500).json({ message: 'An unexpected error occurred' });
-      }
-    }
-  };
-
-// Not Found handler for unrecognized routes
-export const notFound = (req, res, next) => {
-  next(
-    createCustomError(
-      `Not Found - ${req.originalUrl}`,
-      HttpStatusCodes.NOT_FOUND,
-      ErrorCodes.RESOURCE_NOT_FOUND,
-      { requestId: req.id },
-      {
-        category: ErrorCategories.CLIENT_ERROR.NOT_FOUND,
-        stack: null, // Optional, since stack isn't necessary for a 404
-      }
+/**
+ * Filters the error stack trace to remove unnecessary lines,
+ * specifically those from 'node_modules' and internal Node.js files.
+ *
+ * @param {string} stack - The stack trace string.
+ * @returns {string} - The filtered stack trace.
+ */
+export function filterStack(stack) {
+  return stack
+    .split('\n')
+    .filter(
+      (line) =>
+        !line.includes('node_modules') && !line.includes('(internal)')
     )
-  );
-};
+    .join('\n');
+}
 
-export const createErrorResponse = (
-  message,
-  statusCode,
-  errorCode,
-  details
-) => {
-  return { message, statusCode, errorCode, details };
-};
+/**
+ * Sanitizes the error object for logging and response purposes,
+ * removing circular references and sensitive information.
+ *
+ * @param {Error} error - The error object to sanitize.
+ * @returns {Object} - Sanitized error object.
+ */
+export function sanitizeError(error) {
+  if (error instanceof Error) {
+    return {
+      name: error.name,
+      message: error.message,
+      stack: error.stack,
+      ...(error.statusCode && { statusCode: error.statusCode }),
+      ...(error.errorCode && { errorCode: error.errorCode }),
+      ...(error.requestId && { requestId: error.requestId }),
+    };
+  }
+  return error;
+}
+
+/* ==========================
+ * Error Logging Utilities
+ * ========================== */
+
+const errorLogs = new Map();
+const ERROR_LOG_LIMIT = 10;
+const ERROR_LOG_WINDOW = 60000; // 1 minute
+
+/**
+ * Determines whether the error should be logged based on rate limiting.
+ *
+ * @param {string} errorKey - A unique key for the error.
+ * @returns {boolean} - Whether the error should be logged.
+ */
+export function shouldLogError(errorKey) {
+  const now = Date.now();
+  const errorLog = errorLogs.get(errorKey) || { count: 0, firstLog: now };
+
+  if (now - errorLog.firstLog > ERROR_LOG_WINDOW) {
+    errorLog.count = 1;
+    errorLog.firstLog = now;
+  } else if (errorLog.count < ERROR_LOG_LIMIT) {
+    errorLog.count++;
+  } else {
+    return false;
+  }
+
+  errorLogs.set(errorKey, errorLog);
+  return true;
+}
+
+/**
+ * Determines the severity level based on HTTP status codes.
+ *
+ * @param {number} statusCode - The HTTP status code.
+ * @returns {string} - The log severity level (e.g., 'CRITICAL', 'ERROR', 'INFO').
+ */
+export function getSeverityFromStatusCode(statusCode) {
+  if (statusCode >= 500) return 'CRITICAL';
+  if (statusCode >= 400) return 'ERROR';
+  return 'INFO';
+}

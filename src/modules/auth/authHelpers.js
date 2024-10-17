@@ -1,24 +1,16 @@
 import firebase from 'firebase-admin';
 import db from '../../config/firebaseConfig.js';
-import { createCustomError } from '../../errors/customError.js';
-import {
-  ErrorCodes,
-  HttpStatusCodes,
-  ErrorCategories,
-} from '../../errors/errorConstraints.js';
+import { HttpStatusCodes } from '../../errors/errorCategories.js';
 
 const userCollection = db.collection('users');
 
 export const validateInput = (data, schema) => {
   const { error } = schema.validate(data);
   if (error) {
-    throw createCustomError(
-      error.details[0].message,
-      HttpStatusCodes.BAD_REQUEST,
-      ErrorCodes.INVALID_INPUT,
-      { details: error.details },
-      { category: ErrorCategories.CLIENT_ERROR.VALIDATION }
-    );
+    const validationError = new Error(error.details[0].message);
+    validationError.statusCode = HttpStatusCodes.BAD_REQUEST;
+    validationError.details = error.details;
+    throw validationError;
   }
 };
 
@@ -37,32 +29,19 @@ export const fetchUserById = async (uid) => {
   try {
     const userDoc = await userCollection.doc(uid).get();
     if (!userDoc.exists) {
-      throw createCustomError(
-        'User not found',
-        HttpStatusCodes.NOT_FOUND,
-        ErrorCodes.RESOURCE_NOT_FOUND,
-        { uid },
-        { category: ErrorCategories.CLIENT_ERROR.NOT_FOUND }
-      );
+      const error = new Error('User not found');
+      error.statusCode = HttpStatusCodes.NOT_FOUND;
+      throw error;
     }
     return {
       uid: userDoc.id,
       ...userDoc.data(),
     };
   } catch (error) {
-    if (error.name === 'CustomError') {
-      throw error;
-    }
-    throw createCustomError(
-      'Failed to fetch user data',
-      HttpStatusCodes.INTERNAL_SERVER_ERROR,
-      ErrorCodes.DATABASE_ERROR,
-      { uid },
-      {
-        category: ErrorCategories.SERVER_ERROR.DATABASE,
-        originalError: error,
-      }
-    );
+    const dbError = new Error('Failed to fetch user data');
+    dbError.statusCode = HttpStatusCodes.INTERNAL_SERVER_ERROR;
+    dbError.originalError = error;
+    throw dbError;
   }
 };
 
@@ -79,15 +58,9 @@ export const createUser = async (uid, { username, email }) => {
     await userCollection.doc(uid).set(newUser);
     return fetchUserById(uid);
   } catch (error) {
-    throw createCustomError(
-      'Failed to create user',
-      HttpStatusCodes.INTERNAL_SERVER_ERROR,
-      ErrorCodes.DATABASE_ERROR,
-      { uid, username, email },
-      {
-        category: ErrorCategories.SERVER_ERROR.DATABASE,
-        originalError: error,
-      }
-    );
+    const dbError = new Error('Failed to create user');
+    dbError.statusCode = HttpStatusCodes.INTERNAL_SERVER_ERROR;
+    dbError.originalError = error;
+    throw dbError;
   }
 };

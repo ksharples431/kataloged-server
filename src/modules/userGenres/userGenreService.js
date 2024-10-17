@@ -1,10 +1,5 @@
 import db from '../../config/firebaseConfig.js';
-import { createCustomError } from '../../errors/customError.js';
-import {
-  ErrorCodes,
-  HttpStatusCodes,
-  ErrorCategories,
-} from '../../errors/errorConstraints.js';
+import { HttpStatusCodes } from '../../errors/errorCategories.js';
 import { generateId, executeQuery } from '../../utils/globalHelpers.js';
 import { combineBooksData } from '../userBooks/userBookService.js';
 
@@ -39,14 +34,10 @@ export const fetchAllUserGenres = async (uid, requestId) => {
 
     return Array.from(genreMap.values());
   } catch (error) {
-    if (error.name === 'CustomError') throw error;
-    throw createCustomError(
-      'Failed to map user genres from books',
-      HttpStatusCodes.INTERNAL_SERVER_ERROR,
-      ErrorCodes.DATABASE_ERROR,
-      { uid, error: error.message, requestId },
-      { category: ErrorCategories.SERVER_ERROR.DATABASE }
-    );
+    const dbError = new Error('Failed to map user genres from books');
+    dbError.statusCode = HttpStatusCodes.INTERNAL_SERVER_ERROR;
+    dbError.details = { uid, error: error.message, requestId };
+    throw dbError;
   }
 };
 
@@ -56,40 +47,29 @@ export const fetchUserGenreBooks = async (uid, genre, requestId) => {
     const userBooks = await executeQuery(query, requestId);
 
     if (userBooks.length === 0) {
-      throw createCustomError(
-        'No books found for this user',
-        HttpStatusCodes.NOT_FOUND,
-        ErrorCodes.RESOURCE_NOT_FOUND,
-        { uid, requestId },
-        { category: ErrorCategories.CLIENT_ERROR.NOT_FOUND }
-      );
+      const error = new Error('No books found for this user');
+      error.statusCode = HttpStatusCodes.NOT_FOUND;
+      error.details = { uid, requestId };
+      throw error;
     }
 
     const combinedBooks = await combineBooksData(userBooks, requestId);
-
     const genreBooks = combinedBooks.filter(
       (book) => book.genre === genre
     );
 
     if (genreBooks.length === 0) {
-      throw createCustomError(
-        'No books found for this genre',
-        HttpStatusCodes.NOT_FOUND,
-        ErrorCodes.RESOURCE_NOT_FOUND,
-        { uid, genre, requestId },
-        { category: ErrorCategories.CLIENT_ERROR.NOT_FOUND }
-      );
+      const error = new Error('No books found for this genre');
+      error.statusCode = HttpStatusCodes.NOT_FOUND;
+      error.details = { uid, genre, requestId };
+      throw error;
     }
 
     return genreBooks;
   } catch (error) {
-    if (error.name === 'CustomError') throw error;
-    throw createCustomError(
-      'Failed to map books for user and genre',
-      HttpStatusCodes.INTERNAL_SERVER_ERROR,
-      ErrorCodes.DATABASE_ERROR,
-      { uid, genre, error: error.message, requestId },
-      { category: ErrorCategories.SERVER_ERROR.DATABASE }
-    );
+    const dbError = new Error('Failed to map books for user and genre');
+    dbError.statusCode = HttpStatusCodes.INTERNAL_SERVER_ERROR;
+    dbError.details = { uid, genre, error: error.message, requestId };
+    throw dbError;
   }
 };

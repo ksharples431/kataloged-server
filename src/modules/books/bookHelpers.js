@@ -1,20 +1,20 @@
-import { createCustomError } from '../../errors/customError.js';
-import {
-  ErrorCodes,
-  HttpStatusCodes,
-  ErrorCategories,
-} from '../../errors/errorConstraints.js';
+import { HttpStatusCodes } from '../../errors/errorCategories.js';
 
+/**
+ * Formats the book details response. Throws an error if the book object is invalid.
+ *
+ * @param {Object} book - The book object.
+ * @param {string} requestId - The request ID for logging purposes.
+ * @returns {Object} - The formatted book object.
+ */
 export const formatBookDetailsResponse = (book, requestId) => {
   if (!book || typeof book !== 'object') {
-    throw createCustomError(
-      'Invalid book object',
-      HttpStatusCodes.INTERNAL_SERVER_ERROR,
-      ErrorCodes.INVALID_INPUT,
-      { title: book?.title, requestId },
-      { category: ErrorCategories.SERVER_ERROR.INTERNAL }
-    );
+    const error = new Error('Invalid book object');
+    error.statusCode = HttpStatusCodes.INTERNAL_SERVER_ERROR;
+    error.requestId = requestId;
+    throw error; // Pass this error to the global error handler
   }
+
   return {
     author: book.author,
     bid: book.bid,

@@ -1,10 +1,5 @@
 import db from '../../config/firebaseConfig.js';
-import { createCustomError } from '../../errors/customError.js';
-import {
-  ErrorCodes,
-  HttpStatusCodes,
-  ErrorCategories,
-} from '../../errors/errorConstraints.js';
+import { HttpStatusCodes } from '../../errors/errorCategories.js';
 import {
   executeQuery,
   generateLowercaseFields,
@@ -19,25 +14,17 @@ export const fetchBookById = async (bid, requestId) => {
     const [book] = await executeQuery(query, requestId);
 
     if (!book) {
-      throw createCustomError(
-        'Book not found',
-        HttpStatusCodes.NOT_FOUND,
-        ErrorCodes.RESOURCE_NOT_FOUND,
-        { bid, requestId },
-        { category: ErrorCategories.CLIENT_ERROR.NOT_FOUND }
-      );
+      const error = new Error('Book not found');
+      error.statusCode = HttpStatusCodes.NOT_FOUND;
+      error.details = { bid, requestId };
+      throw error;
     }
 
     return book;
   } catch (error) {
-    if (error.name === 'CustomError') throw error;
-    throw createCustomError(
-      'Error fetching book',
-      HttpStatusCodes.INTERNAL_SERVER_ERROR,
-      ErrorCodes.DATABASE_ERROR,
-      { bid, error: error.message, requestId },
-      { category: ErrorCategories.SERVER_ERROR.DATABASE }
-    );
+    const dbError = new Error(`Error fetching book: ${error.message}`);
+    dbError.statusCode = HttpStatusCodes.INTERNAL_SERVER_ERROR;
+    throw dbError;
   }
 };
 
@@ -47,27 +34,20 @@ export const fetchUserBookById = async (ubid, requestId) => {
     const [userBook] = await executeQuery(query, requestId);
 
     if (!userBook) {
-      throw createCustomError(
-        'User book not found',
-        HttpStatusCodes.NOT_FOUND,
-        ErrorCodes.RESOURCE_NOT_FOUND,
-        { ubid, requestId },
-        { category: ErrorCategories.CLIENT_ERROR.NOT_FOUND }
-      );
+      const error = new Error('User book not found');
+      error.statusCode = HttpStatusCodes.NOT_FOUND;
+      error.details = { ubid, requestId };
+      throw error;
     }
 
     const combinedBook = await combineBooksData(userBook, requestId);
-
     return combinedBook;
   } catch (error) {
-    if (error.name === 'CustomError') throw error;
-    throw createCustomError(
-      'Error fetching user book',
-      HttpStatusCodes.INTERNAL_SERVER_ERROR,
-      ErrorCodes.DATABASE_ERROR,
-      { ubid, error: error.message, requestId },
-      { category: ErrorCategories.SERVER_ERROR.DATABASE }
+    const dbError = new Error(
+      `Error fetching user book: ${error.message}`
     );
+    dbError.statusCode = HttpStatusCodes.INTERNAL_SERVER_ERROR;
+    throw dbError;
   }
 };
 
@@ -79,14 +59,11 @@ export const fetchUserBooks = async (uid, sortBy, order, requestId) => {
 
     return userBooks;
   } catch (error) {
-    if (error.name === 'CustomError') throw error;
-    throw createCustomError(
-      'Error fetching user books',
-      HttpStatusCodes.INTERNAL_SERVER_ERROR,
-      ErrorCodes.DATABASE_ERROR,
-      { uid, error: error.message, requestId },
-      { category: ErrorCategories.SERVER_ERROR.DATABASE }
+    const dbError = new Error(
+      `Error fetching user books: ${error.message}`
     );
+    dbError.statusCode = HttpStatusCodes.INTERNAL_SERVER_ERROR;
+    throw dbError;
   }
 };
 
@@ -101,13 +78,12 @@ export const createUserBookHelper = async (
     const existingBooks = await executeQuery(query, requestId);
 
     if (existingBooks.length > 0) {
-      throw createCustomError(
-        "This book already exists in the user's library",
-        HttpStatusCodes.CONFLICT,
-        ErrorCodes.RESOURCE_ALREADY_EXISTS,
-        { uid, bid, requestId },
-        { category: ErrorCategories.CLIENT_ERROR.CONFLICT }
+      const error = new Error(
+        "This book already exists in the user's library"
       );
+      error.statusCode = HttpStatusCodes.CONFLICT;
+      error.details = { uid, bid, requestId };
+      throw error;
     }
 
     const newUserBook = generateLowercaseFields({
@@ -120,18 +96,13 @@ export const createUserBookHelper = async (
     const docRef = await userBookCollection.add(newUserBook);
     const ubid = docRef.id;
     await docRef.update({ ubid });
-    const createdUserBook = await fetchUserBookById(ubid, requestId);
-
-    return createdUserBook;
+    return await fetchUserBookById(ubid, requestId);
   } catch (error) {
-    if (error.name === 'CustomError') throw error;
-    throw createCustomError(
-      'Error creating user book',
-      HttpStatusCodes.INTERNAL_SERVER_ERROR,
-      ErrorCodes.DATABASE_ERROR,
-      { uid, bid, error: error.message, requestId },
-      { category: ErrorCategories.SERVER_ERROR.DATABASE }
+    const dbError = new Error(
+      `Error creating user book: ${error.message}`
     );
+    dbError.statusCode = HttpStatusCodes.INTERNAL_SERVER_ERROR;
+    throw dbError;
   }
 };
 
@@ -145,13 +116,10 @@ export const updateUserBookHelper = async (
     const [userBook] = await executeQuery(query, requestId);
 
     if (!userBook) {
-      throw createCustomError(
-        'User book not found',
-        HttpStatusCodes.NOT_FOUND,
-        ErrorCodes.RESOURCE_NOT_FOUND,
-        { ubid, requestId },
-        { category: ErrorCategories.CLIENT_ERROR.NOT_FOUND }
-      );
+      const error = new Error('User book not found');
+      error.statusCode = HttpStatusCodes.NOT_FOUND;
+      error.details = { ubid, requestId };
+      throw error;
     }
 
     const mergedData = {
@@ -161,27 +129,18 @@ export const updateUserBookHelper = async (
     };
 
     const updatedUserBook = generateLowercaseFields(mergedData);
-
     Object.keys(updatedUserBook).forEach((key) =>
       updatedUserBook[key] === undefined ? delete updatedUserBook[key] : {}
     );
 
     await userBookCollection.doc(ubid).update(updatedUserBook);
-    const fetchedUpdatedUserBook = await fetchUserBookById(
-      ubid,
-      requestId
-    );
-
-    return fetchedUpdatedUserBook;
+    return await fetchUserBookById(ubid, requestId);
   } catch (error) {
-    if (error.name === 'CustomError') throw error;
-    throw createCustomError(
-      'Error updating user book',
-      HttpStatusCodes.INTERNAL_SERVER_ERROR,
-      ErrorCodes.DATABASE_ERROR,
-      { ubid, updateData, error: error.message, requestId },
-      { category: ErrorCategories.SERVER_ERROR.DATABASE }
+    const dbError = new Error(
+      `Error updating user book: ${error.message}`
     );
+    dbError.statusCode = HttpStatusCodes.INTERNAL_SERVER_ERROR;
+    throw dbError;
   }
 };
 
@@ -191,53 +150,36 @@ export const deleteUserBookHelper = async (ubid, requestId) => {
     const [userBook] = await executeQuery(query, requestId);
 
     if (!userBook) {
-      throw createCustomError(
-        'User book not found',
-        HttpStatusCodes.NOT_FOUND,
-        ErrorCodes.RESOURCE_NOT_FOUND,
-        { ubid, requestId },
-        { category: ErrorCategories.CLIENT_ERROR.NOT_FOUND }
-      );
+      const error = new Error('User book not found');
+      error.statusCode = HttpStatusCodes.NOT_FOUND;
+      error.details = { ubid, requestId };
+      throw error;
     }
 
     await userBookCollection.doc(ubid).delete();
+    return true;
   } catch (error) {
-    if (error.name === 'CustomError') throw error;
-    throw createCustomError(
-      'Error deleting user book',
-      HttpStatusCodes.INTERNAL_SERVER_ERROR,
-      ErrorCodes.DATABASE_ERROR,
-      { ubid, error: error.message, requestId },
-      { category: ErrorCategories.SERVER_ERROR.DATABASE }
+    const dbError = new Error(
+      `Error deleting user book: ${error.message}`
     );
+    dbError.statusCode = HttpStatusCodes.INTERNAL_SERVER_ERROR;
+    throw dbError;
   }
 };
 
 const combineBookData = async (userBook, requestId) => {
   try {
     const bookData = await fetchBookById(userBook.bid, requestId);
-
-    return {
-      ...bookData,
-      ...userBook,
-    };
+    return { ...bookData, ...userBook };
   } catch (error) {
-    if (
-      error.name === 'CustomError' &&
-      error.statusCode === HttpStatusCodes.NOT_FOUND
-    ) {
-      return {
-        ...userBook,
-        bookError: error.message,
-      };
+    if (error.statusCode === HttpStatusCodes.NOT_FOUND) {
+      return { ...userBook, bookError: error.message };
     }
-    throw createCustomError(
-      `Failed to fetch book data for bid ${userBook.bid}`,
-      HttpStatusCodes.INTERNAL_SERVER_ERROR,
-      ErrorCodes.DATABASE_ERROR,
-      { bid: userBook.bid, error: error.message, requestId },
-      { category: ErrorCategories.SERVER_ERROR.DATABASE }
+    const dbError = new Error(
+      `Failed to fetch book data for bid ${userBook.bid}: ${error.message}`
     );
+    dbError.statusCode = HttpStatusCodes.INTERNAL_SERVER_ERROR;
+    throw dbError;
   }
 };
 
@@ -252,13 +194,10 @@ export const combineBooksData = async (userBooks, requestId) => {
 
     return isArray ? combinedBooks : combinedBooks[0];
   } catch (error) {
-    if (error.name === 'CustomError') throw error;
-    throw createCustomError(
-      'Error combining books data',
-      HttpStatusCodes.INTERNAL_SERVER_ERROR,
-      ErrorCodes.DATABASE_ERROR,
-      { error: error.message, requestId },
-      { category: ErrorCategories.SERVER_ERROR.DATABASE }
+    const dbError = new Error(
+      `Error combining books data: ${error.message}`
     );
+    dbError.statusCode = HttpStatusCodes.INTERNAL_SERVER_ERROR;
+    throw dbError;
   }
 };

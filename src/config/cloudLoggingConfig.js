@@ -20,7 +20,9 @@ try {
   };
   console.log('Connected to Cloud Logging');
 } catch (error) {
+  // Throw the error for express-error-handler to capture it, if applicable
   console.error('Failed to initialize Cloud Logging:', error);
+  throw new Error(`Cloud Logging Initialization Error: ${error.message}`);
 }
 
 const fallbackLog = {
@@ -50,7 +52,9 @@ export const logEntry = async (entry) => {
       console.log(`Log entry written to fallback: ${entry.message}`);
     }
   } catch (error) {
+    // Capture this in case of failure to log the entry
     console.error(`Failed to log entry: ${entry.message}`, error);
+    throw new Error(`Logging Error: ${error.message}`);
   }
 };
 

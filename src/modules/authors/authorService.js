@@ -1,15 +1,10 @@
 import db from '../../config/firebaseConfig.js';
-import { createCustomError } from '../../errors/customError.js';
-import {
-  ErrorCodes,
-  HttpStatusCodes,
-  ErrorCategories,
-} from '../../errors/errorConstraints.js';
+import { HttpStatusCodes } from '../../errors/errorCategories.js';
 import { generateId, executeQuery } from '../../utils/globalHelpers.js';
 
 const bookCollection = db.collection('books');
 
-export const fetchAllAuthors = async () => {
+export const fetchAllAuthors = async (requestId) => {
   try {
     const query = bookCollection;
     const books = await executeQuery(query);
@@ -37,40 +32,29 @@ export const fetchAllAuthors = async () => {
 
     return Array.from(authorMap.values());
   } catch (error) {
-    throw createCustomError(
-      'Failed to fetch authors',
-      HttpStatusCodes.INTERNAL_SERVER_ERROR,
-      ErrorCodes.DATABASE_ERROR,
-      { error: error.message, requestId },
-      { category: ErrorCategories.SERVER_ERROR.DATABASE }
-    );
+    const dbError = new Error('Failed to fetch authors');
+    dbError.statusCode = HttpStatusCodes.INTERNAL_SERVER_ERROR;
+    dbError.details = { requestId, error: error.message };
+    throw dbError;
   }
 };
 
-export const fetchAuthorBooks = async (author) => {
+export const fetchAuthorBooks = async (author, requestId) => {
   try {
     const query = bookCollection.where('author', '==', author);
     const books = await executeQuery(query);
 
     if (books.length === 0) {
-      throw createCustomError(
-        'No books found for this author',
-        HttpStatusCodes.NOT_FOUND,
-        ErrorCodes.RESOURCE_NOT_FOUND,
-        { author, requestId },
-        { category: ErrorCategories.CLIENT_ERROR.NOT_FOUND }
-      );
+      const error = new Error('No books found for this author');
+      error.statusCode = HttpStatusCodes.NOT_FOUND;
+      throw error;
     }
 
     return books;
   } catch (error) {
-    if (error.name === 'CustomError') throw error;
-    throw createCustomError(
-      'Failed to fetch books for author',
-      HttpStatusCodes.INTERNAL_SERVER_ERROR,
-      ErrorCodes.DATABASE_ERROR,
-      { author, error: error.message, requestId },
-      { category: ErrorCategories.SERVER_ERROR.DATABASE }
-    );
+    const dbError = new Error('Failed to fetch books for author');
+    dbError.statusCode = HttpStatusCodes.INTERNAL_SERVER_ERROR;
+    dbError.details = { author, requestId, error: error.message };
+    throw dbError;
   }
 };

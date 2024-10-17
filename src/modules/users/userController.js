@@ -1,100 +1,101 @@
-import { createCustomError } from '../../errors/customError.js';
-import {
-  ErrorCodes,
-  HttpStatusCodes,
-  ErrorCategories,
-} from '../../errors/errorConstraints.js';
+import { HttpStatusCodes } from '../../errors/errorCategories.js';
 import db from '../../config/firebaseConfig.js';
 import firebase from 'firebase-admin';
 
 const userCollection = db.collection('users');
 
-export const getAllUsers = async (req, res) => {
-  const snapshot = await userCollection.get();
-  const users = snapshot.docs.map((doc) => ({
-    uid: doc.id,
-    ...doc.data(),
-  }));
+export const getAllUsers = async (req, res, next) => {
+  try {
+    const snapshot = await userCollection.get();
+    const users = snapshot.docs.map((doc) => ({
+      uid: doc.id,
+      ...doc.data(),
+    }));
 
-  res.status(200).json({
-    message: 'Users fetched successfully',
-    users,
-  });
+    res.status(200).json({
+      message: 'Users fetched successfully',
+      users,
+    });
+  } catch (error) {
+    next(error); // Pass errors to the global error handler
+  }
 };
 
-export const getUserById = async (req, res) => {
-  const { uid } = req.params;
-  const userDoc = await userCollection.doc(uid).get();
+export const getUserById = async (req, res, next) => {
+  try {
+    const { uid } = req.params;
+    const userDoc = await userCollection.doc(uid).get();
 
-  if (!userDoc.exists) {
-    throw createCustomError(
-      'User not found',
-      HttpStatusCodes.NOT_FOUND,
-      ErrorCodes.RESOURCE_NOT_FOUND,
-      { userId: uid, requestId: req.id },
-      { category: ErrorCategories.CLIENT_ERROR.NOT_FOUND }
-    );
+    if (!userDoc.exists) {
+      const error = new Error('User not found');
+      error.statusCode = HttpStatusCodes.NOT_FOUND;
+      error.details = { userId: uid, requestId: req.id };
+      return next(error);
+    }
+
+    const userData = userDoc.data();
+    res.status(200).json({
+      message: 'User fetched successfully',
+      user: { uid: userDoc.id, ...userData },
+    });
+  } catch (error) {
+    next(error); // Pass errors to the global error handler
   }
-
-  const userData = userDoc.data();
-  res.status(200).json({
-    message: 'User fetched successfully',
-    user: { uid: userDoc.id, ...userData },
-  });
 };
 
+export const updateUser = async (req, res, next) => {
+  try {
+    const { uid } = req.params;
+    const updateData = req.body;
 
-export const updateUser = async (req, res) => {
-  const { uid } = req.params;
-  const updateData = req.body;
+    const userRef = userCollection.doc(uid);
+    const userDoc = await userRef.get();
 
-  const userRef = userCollection.doc(uid);
-  const userDoc = await userRef.get();
+    if (!userDoc.exists) {
+      const error = new Error('User not found');
+      error.statusCode = HttpStatusCodes.NOT_FOUND;
+      error.details = { userId: uid, requestId: req.id };
+      return next(error);
+    }
 
-  if (!userDoc.exists) {
-    throw createCustomError(
-      'User not found',
-      HttpStatusCodes.NOT_FOUND,
-      ErrorCodes.RESOURCE_NOT_FOUND,
-      { userId: uid, requestId: req.id },
-      { category: ErrorCategories.CLIENT_ERROR.NOT_FOUND }
-    );
+    await userRef.update({
+      ...updateData,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      updatedAtString: new Date().toISOString(),
+    });
+
+    const updatedUserDoc = await userRef.get();
+    const updatedUserData = updatedUserDoc.data();
+
+    res.status(200).json({
+      message: 'User updated successfully',
+      user: { uid: updatedUserDoc.id, ...updatedUserData },
+    });
+  } catch (error) {
+    next(error); // Pass errors to the global error handler
   }
-
-  await userRef.update({
-    ...updateData,
-    updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-    updatedAtString: new Date().toISOString(),
-  });
-
-  const updatedUserDoc = await userRef.get();
-  const updatedUserData = updatedUserDoc.data();
-
-  res.status(200).json({
-    message: 'User updated successfully',
-    user: { uid: updatedUserDoc.id, ...updatedUserData },
-  });
 };
 
-export const deleteUser = async (req, res) => {
-  const { uid } = req.params;
+export const deleteUser = async (req, res, next) => {
+  try {
+    const { uid } = req.params;
 
-  const userRef = userCollection.doc(uid);
-  const userDoc = await userRef.get();
+    const userRef = userCollection.doc(uid);
+    const userDoc = await userRef.get();
 
-  if (!userDoc.exists) {
-    throw createCustomError(
-      'User not found',
-      HttpStatusCodes.NOT_FOUND,
-      ErrorCodes.RESOURCE_NOT_FOUND,
-      { userId: uid, requestId: req.id },
-      { category: ErrorCategories.CLIENT_ERROR.NOT_FOUND }
-    );
+    if (!userDoc.exists) {
+      const error = new Error('User not found');
+      error.statusCode = HttpStatusCodes.NOT_FOUND;
+      error.details = { userId: uid, requestId: req.id };
+      return next(error);
+    }
+
+    await userRef.delete();
+
+    res.status(200).json({
+      message: 'User deleted successfully',
+    });
+  } catch (error) {
+    next(error); // Pass errors to the global error handler
   }
-
-  await userRef.delete();
-
-  res.status(200).json({
-    message: 'User deleted successfully',
-  });
 };
